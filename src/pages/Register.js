@@ -169,52 +169,98 @@ const Register = () => {
     setLoading(true);
 
     try {
+      console.log('Starting registration process...');
+      console.log('Form data:', formData);
+
       // First, create a pending registration record with all the form data
       const registrationData = {
         email: formData.email,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        phone: formData.phone,
+        phone: formData.phone || null,
         course: formData.course,
-        batch_year: parseInt(formData.batch),
-        graduation_year: parseInt(formData.graduationYear),
-        current_job: formData.currentJob,
-        company: formData.company,
-        address: formData.address,
-        city: formData.city,
-        country: formData.country,
-        student_id: formData.studentId,
-        status: 'pending',
-        submitted_at: new Date().toISOString()
+        batch_year: formData.batch ? parseInt(formData.batch) : null,
+        graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+        current_job: formData.currentJob || null,
+        company: formData.company || null,
+        address: formData.address || null,
+        city: formData.city || null,
+        country: formData.country || 'Philippines',
+        student_id: formData.studentId || null,
+        status: 'pending'
       };
 
-      const { error: regError } = await supabase
+      console.log('Registration data to insert:', registrationData);
+
+      const { data: regData, error: regError } = await supabase
         .from('pending_registrations')
-        .insert(registrationData);
+        .insert(registrationData)
+        .select();
 
       if (regError) {
         console.error('Registration data error:', regError);
-        toast.error('Failed to save registration data. Please try again.');
+        console.error('Error details:', {
+          message: regError.message,
+          code: regError.code,
+          details: regError.details,
+          hint: regError.hint
+        });
+        
+        // Provide more specific error messages
+        if (regError.message.includes('duplicate key')) {
+          toast.error('An account with this email already exists. Please use a different email or try logging in.');
+        } else if (regError.message.includes('violates check constraint')) {
+          toast.error('Invalid data provided. Please check all required fields are filled correctly.');
+        } else if (regError.message.includes('violates not-null constraint')) {
+          toast.error('Please fill in all required fields (marked with *)');
+        } else {
+          toast.error(`Registration failed: ${regError.message}`);
+        }
         return;
       }
 
+      console.log('Registration data saved successfully:', regData);
+
       // Then create the auth user
+      console.log('Creating Supabase auth user...');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: { data: { first_name: formData.firstName, last_name: formData.lastName } }
+        options: { 
+          data: { 
+            first_name: formData.firstName, 
+            last_name: formData.lastName 
+          } 
+        }
       });
       
       if (authError) {
-        toast.error(authError.message || 'Registration failed');
+        console.error('Auth user creation error:', authError);
+        console.error('Auth error details:', {
+          message: authError.message,
+          code: authError.code,
+          details: authError.details
+        });
+        
+        // If auth fails, we should clean up the pending registration
+        if (regData && regData[0]) {
+          await supabase
+            .from('pending_registrations')
+            .delete()
+            .eq('id', regData[0].id);
+        }
+        
+        toast.error(authError.message || 'Failed to create user account. Please try again.');
         return;
       }
 
-      toast.success('Registration created! Please check your email to confirm your account. After you sign in, your application will be submitted for admin approval.');
+      console.log('Auth user created successfully:', authData);
+      toast.success('Registration successful! Please check your email to confirm your account. After you sign in, your application will be submitted for admin approval.');
       navigate('/login');
     } catch (error) {
       console.error('Unexpected error during registration:', error);
-      toast.error('Unexpected error during registration');
+      console.error('Error stack:', error.stack);
+      toast.error('An unexpected error occurred during registration. Please try again.');
     } finally {
       setLoading(false);
     }

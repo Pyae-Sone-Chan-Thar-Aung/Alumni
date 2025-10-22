@@ -49,8 +49,8 @@ A comprehensive, modern alumni portal system for the College of Computer Studies
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd CCSAlumni
+   git clone https://github.com/Pyae-Sone-Chan-Thar-Aung/Alumni.git
+   cd Alumni
    ```
 
 2. **Install dependencies**
@@ -242,4 +242,4 @@ This project is licensed under the MIT License.
 
 ---
 
-**Made with ❤️ for UIC Alumni** 
+**Made with ❤️ for UIC Alumni**

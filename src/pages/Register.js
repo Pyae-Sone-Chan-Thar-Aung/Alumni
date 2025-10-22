@@ -102,16 +102,15 @@ const Register = () => {
     }
   };
 
-  const uploadProfileImage = async (userId) => {
+  const uploadProfileImage = async () => {
     if (!profileImage) return null;
 
     try {
       const fileExt = profileImage.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
+      const filePath = `temp/${fileName}`; // Use temp folder for pending registrations
 
       console.log('📤 Uploading profile image...');
-      console.log('User ID:', userId);
       console.log('File:', profileImage.name);
       console.log('File size:', profileImage.size, 'bytes');
       console.log('File type:', profileImage.type);
@@ -171,8 +170,23 @@ const Register = () => {
     try {
       console.log('Starting registration process...');
       console.log('Form data:', formData);
+      console.log('Profile image:', profileImage ? profileImage.name : 'No image selected');
 
-      // First, create a pending registration record with all the form data
+      // First, upload profile image if provided
+      let profileImageUrl = null;
+      if (profileImage) {
+        console.log('Uploading profile image...');
+        try {
+          profileImageUrl = await uploadProfileImage();
+          console.log('Profile image uploaded successfully:', profileImageUrl);
+        } catch (imageError) {
+          console.error('Profile image upload failed:', imageError);
+          toast.error('Failed to upload profile image. Please try again.');
+          return;
+        }
+      }
+
+      // Create a pending registration record with all the form data
       const registrationData = {
         email: formData.email,
         first_name: formData.firstName,
@@ -187,6 +201,7 @@ const Register = () => {
         city: formData.city || null,
         country: formData.country || 'Philippines',
         student_id: formData.studentId || null,
+        profile_image_url: profileImageUrl,
         status: 'pending'
       };
 
@@ -205,6 +220,19 @@ const Register = () => {
           details: regError.details,
           hint: regError.hint
         });
+        
+        // If registration fails and we uploaded an image, we should clean it up
+        if (profileImageUrl) {
+          try {
+            const fileName = profileImageUrl.split('/').pop();
+            await supabase.storage
+              .from('alumni-profiles')
+              .remove([`temp/${fileName}`]);
+            console.log('Cleaned up uploaded image after registration failure');
+          } catch (cleanupError) {
+            console.error('Failed to cleanup uploaded image:', cleanupError);
+          }
+        }
         
         // Provide more specific error messages
         if (regError.message.includes('duplicate key')) {
@@ -229,7 +257,8 @@ const Register = () => {
         options: { 
           data: { 
             first_name: formData.firstName, 
-            last_name: formData.lastName 
+            last_name: formData.lastName,
+            profile_image_url: profileImageUrl
           } 
         }
       });
@@ -242,12 +271,24 @@ const Register = () => {
           details: authError.details
         });
         
-        // If auth fails, we should clean up the pending registration
+        // If auth fails, we should clean up the pending registration and uploaded image
         if (regData && regData[0]) {
           await supabase
             .from('pending_registrations')
             .delete()
             .eq('id', regData[0].id);
+        }
+        
+        if (profileImageUrl) {
+          try {
+            const fileName = profileImageUrl.split('/').pop();
+            await supabase.storage
+              .from('alumni-profiles')
+              .remove([`temp/${fileName}`]);
+            console.log('Cleaned up uploaded image after auth failure');
+          } catch (cleanupError) {
+            console.error('Failed to cleanup uploaded image:', cleanupError);
+          }
         }
         
         toast.error(authError.message || 'Failed to create user account. Please try again.');

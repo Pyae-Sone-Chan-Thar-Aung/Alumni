@@ -218,3 +218,77 @@ Proper security policies for the `pending_registrations` table:
 - **"Duplicate key"**: User already exists, try different email
 
 The registration system should now work properly without the "Failed to save registration data" error!
+
+## 🖼️ **Profile Image Support Added**
+
+### **What's New:**
+The registration system now includes full profile image support:
+
+#### **Profile Image Upload Process:**
+1. **Image Selection**: Users can select a profile image during registration
+2. **Image Validation**: Checks file size (5MB max) and type (JPEG, PNG, JPG)
+3. **Image Upload**: Uploads to `alumni-profiles/temp/` folder during registration
+4. **Database Storage**: Saves image URL in `pending_registrations.profile_image_url`
+5. **Auth Metadata**: Includes image URL in Supabase auth user metadata
+6. **Cleanup**: Removes uploaded image if registration fails
+
+#### **Storage Setup Required:**
+Run `setup_profile_image_storage.sql` to:
+- Create `alumni-profiles` storage bucket
+- Set up proper file size limits (5MB)
+- Configure allowed MIME types (JPEG, PNG, JPG)
+- Create Row Level Security policies
+- Allow public uploads for registration
+
+#### **Image Upload Code:**
+```javascript
+// Upload profile image before saving registration data
+let profileImageUrl = null;
+if (profileImage) {
+  try {
+    profileImageUrl = await uploadProfileImage();
+  } catch (imageError) {
+    toast.error('Failed to upload profile image. Please try again.');
+    return;
+  }
+}
+
+// Include in registration data
+const registrationData = {
+  // ... other fields
+  profile_image_url: profileImageUrl,
+  // ... rest of data
+};
+```
+
+#### **Cleanup on Failure:**
+```javascript
+// If registration fails, clean up uploaded image
+if (profileImageUrl) {
+  const fileName = profileImageUrl.split('/').pop();
+  await supabase.storage
+    .from('alumni-profiles')
+    .remove([`temp/${fileName}`]);
+}
+```
+
+### **How to Enable Profile Images:**
+
+#### **Step 1: Run Storage Setup**
+1. Go to **Supabase Dashboard** → **SQL Editor**
+2. Copy and paste the contents of `setup_profile_image_storage.sql`
+3. Click **Run** to execute the script
+
+#### **Step 2: Test Profile Image Upload**
+1. Try registering a new user with a profile image
+2. Check that the image uploads successfully
+3. Verify the image URL is saved in the database
+4. Confirm the image appears in the profile after approval
+
+### **Expected Results:**
+- ✅ Users can upload profile images during registration
+- ✅ Images are stored in Supabase Storage
+- ✅ Image URLs are saved in the database
+- ✅ Images appear in user profiles after approval
+- ✅ Failed registrations clean up uploaded images
+- ✅ Proper file validation and error handling

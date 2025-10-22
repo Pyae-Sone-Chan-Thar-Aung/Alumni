@@ -1,61 +1,192 @@
-import React, { useState } from 'react';
-import { FaUsers, FaComments, FaSearch, FaPlus, FaUser, FaClock, FaMapMarkerAlt } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import supabase from '../config/supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { FaUsers, FaComments, FaSearch, FaPlus, FaUser, FaClock, FaMapMarkerAlt, FaTimes, FaPaperPlane, FaUserCheck, FaUserPlus } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import './Batchmates.css';
 
 const Batchmates = () => {
-  const [selectedBatch, setSelectedBatch] = useState('2020');
+  const { user } = useAuth();
+  // Removed selectedBatch state since we're showing all alumni
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedCourse, setSelectedCourse] = useState('All');
+  const [batchmates, setBatchmates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [connections, setConnections] = useState([]);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedBatchmate, setSelectedBatchmate] = useState(null);
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
-  const batches = [
-    { year: '2020', count: 45, active: 32 },
-    { year: '2019', count: 52, active: 28 },
-    { year: '2018', count: 48, active: 35 },
-    { year: '2017', count: 41, active: 22 },
-    { year: '2016', count: 38, active: 18 }
-  ];
+  // Load all alumni (not just same batch)
+  useEffect(() => {
+    const loadBatchmates = async () => {
+      try {
+        setLoading(true);
+        if (!user?.id) return; // Just check if user exists
+        
+        // Load ALL alumni regardless of batch year
+        const { data, error } = await supabase
+          .from('users')
+          .select(`
+            id, first_name, last_name, course, email,
+            current_job, company, location, profile_picture,
+            last_login_at, created_at, batch_year
+          `)
+          .eq('is_verified', true)
+          .neq('id', user.id) // Exclude current user
+          .order('batch_year', { ascending: false }); // Order by batch year
+          
+        if (error) throw error;
+        
+        setBatchmates((data || []).map(u => ({
+          id: u.id,
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+          course: u.course || 'Course not specified',
+          location: u.location || 'Location not specified',
+          currentJob: u.current_job || 'Job not specified',
+          company: u.company || '',
+          lastActive: u.last_login_at ? formatLastActive(u.last_login_at) : 'Never logged in',
+          avatar: u.profile_picture || '/default-avatar.png',
+          email: u.email,
+          batchYear: u.batch_year || 'Not specified'
+        })));
+      } catch (error) {
+        console.error('Error loading batchmates:', error);
+        toast.error('Failed to load batchmates');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadBatchmates();
+  }, [user?.id]);
+  
+  // Load user connections
+  useEffect(() => {
+    const loadConnections = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_connections')
+          .select('*')
+          .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+          
+        if (error) throw error;
+        setConnections(data || []);
+      } catch (error) {
+        console.error('Error loading connections:', error);
+      }
+    };
+    
+    loadConnections();
+  }, [user?.id]);
 
-  const batchmates = [
-    {
-      id: 1,
-      name: 'Maria Santos',
-      course: 'BS Computer Science',
-      location: 'Davao City',
-      currentJob: 'Software Engineer',
-      company: 'TechCorp Inc.',
-      lastActive: '2 hours ago',
-      avatar: '/default-avatar.png'
-    },
-    {
-      id: 2,
-      name: 'John Dela Cruz',
-      course: 'BS Information Technology',
-      location: 'Manila',
-      currentJob: 'Data Analyst',
-      company: 'DataFlow Solutions',
-      lastActive: '1 day ago',
-      avatar: '/default-avatar.png'
-    },
-    {
-      id: 3,
-      name: 'Ana Rodriguez',
-      course: 'BS Computer Science',
-      location: 'Cebu City',
-      currentJob: 'UI/UX Designer',
-      company: 'Creative Studio',
-      lastActive: '3 hours ago',
-      avatar: '/default-avatar.png'
-    },
-    {
-      id: 4,
-      name: 'Carlos Martinez',
-      course: 'BS Information Technology',
-      location: 'Davao City',
-      currentJob: 'Network Administrator',
-      company: 'IT Solutions',
-      lastActive: '5 hours ago',
-      avatar: '/default-avatar.png'
+  // Helper function to format last active time
+  const formatLastActive = (timestamp) => {
+    const now = new Date();
+    const lastActive = new Date(timestamp);
+    const diffInMinutes = Math.floor((now - lastActive) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return diffInMinutes < 5 ? 'Just now' : `${diffInMinutes}m ago`;
+    } else if (diffInMinutes < 1440) { // 24 hours
+      return `${Math.floor(diffInMinutes / 60)}h ago`;
+    } else {
+      return `${Math.floor(diffInMinutes / 1440)}d ago`;
     }
-  ];
+  };
+  
+  // Get connection status with a batchmate
+  const getConnectionStatus = (batchmateId) => {
+    const connection = connections.find(conn => 
+      (conn.requester_id === user.id && conn.recipient_id === batchmateId) ||
+      (conn.recipient_id === user.id && conn.requester_id === batchmateId)
+    );
+    return connection?.status || 'none';
+  };
+  
+  // Send connection request
+  const sendConnectionRequest = async (batchmateId) => {
+    try {
+      const { error } = await supabase
+        .from('user_connections')
+        .insert({
+          requester_id: user.id,
+          recipient_id: batchmateId,
+          status: 'pending',
+          message: 'Hello! I would like to connect with you.'
+        });
+        
+      if (error) throw error;
+      
+      // Refresh connections
+      const { data } = await supabase
+        .from('user_connections')
+        .select('*')
+        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+      setConnections(data || []);
+      
+      toast.success('Connection request sent! The recipient will be notified.');
+    } catch (error) {
+      console.error('Error sending connection request:', error);
+      toast.error('Failed to send connection request');
+    }
+  };
+  
+  // Open message modal
+  const openMessageModal = (batchmate) => {
+    setSelectedBatchmate(batchmate);
+    setShowMessageModal(true);
+    setMessageContent('');
+  };
+  
+  // Send message
+  const sendMessage = async () => {
+    if (!messageContent.trim() || !selectedBatchmate) return;
+    
+    try {
+      setSendingMessage(true);
+      
+      console.log('Sending message from batchmates:', {
+        sender_id: user.id,
+        recipient_id: selectedBatchmate.id,
+        subject: 'Message from Alumni Directory',
+        content: messageContent.trim()
+      });
+      
+      // Send message using the new messages table
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          recipient_id: selectedBatchmate.id,
+          subject: 'Message from Alumni Directory',
+          content: messageContent.trim()
+        })
+        .select();
+        
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Message sent successfully:', data);
+      toast.success(`Message sent to ${selectedBatchmate.name}! The recipient will be notified.`);
+      setShowMessageModal(false);
+      setMessageContent('');
+      setSelectedBatchmate(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error(`Failed to send message: ${error.message}`);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  // Removed batches variable since we're showing all alumni
 
   const groupSessions = [
     {
@@ -90,68 +221,61 @@ const Batchmates = () => {
     }
   ];
 
-  const filteredBatchmates = batchmates.filter(batchmate =>
-    batchmate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    batchmate.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    batchmate.currentJob.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBatchmates = batchmates.filter(batchmate => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term || 
+      batchmate.name.toLowerCase().includes(term) || 
+      batchmate.course.toLowerCase().includes(term) || 
+      (batchmate.currentJob || '').toLowerCase().includes(term) ||
+      (batchmate.company || '').toLowerCase().includes(term) ||
+      (batchmate.batchYear || '').toString().includes(term);
+    const matchesCourse = selectedCourse === 'All' || batchmate.course === selectedCourse;
+    return matchesSearch && matchesCourse;
+  });
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="batchmates-page">
+        <div className="container">
+          <div className="page-header">
+            <h1>Alumni Directory</h1>
+            <p>Connect with all alumni from the College of Computer Studies</p>
+          </div>
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading alumni directory...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="batchmates-page">
       <div className="container">
         <div className="page-header">
-          <h1>Batchmates</h1>
-          <p>Connect with your fellow alumni from the same batch</p>
+          <h1>Alumni Directory</h1>
+          <p>Connect with all alumni from the College of Computer Studies</p>
         </div>
 
         <div className="batchmates-content">
           <div className="sidebar">
-            <div className="batch-selector">
-              <h3>Select Your Batch</h3>
-              <div className="batch-list">
-                {batches.map(batch => (
-                  <div
-                    key={batch.year}
-                    className={`batch-item ${selectedBatch === batch.year ? 'active' : ''}`}
-                    onClick={() => setSelectedBatch(batch.year)}
-                  >
-                    <div className="batch-info">
-                      <h4>Batch {batch.year}</h4>
-                      <p>{batch.count} total members</p>
-                      <span className="active-count">{batch.active} active</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="group-sessions">
-              <h3>Group Sessions</h3>
-              <div className="sessions-list">
-                {groupSessions.map(session => (
-                  <div key={session.id} className="session-card">
-                    <div className="session-header">
-                      <h4>{session.title}</h4>
-                      <span className="session-date">{session.date}</span>
-                    </div>
-                    <div className="session-details">
-                      <div className="detail-item">
-                        <FaClock />
-                        <span>{session.time}</span>
-                      </div>
-                      <div className="detail-item">
-                        <FaMapMarkerAlt />
-                        <span>{session.location}</span>
-                      </div>
-                      <div className="detail-item">
-                        <FaUsers />
-                        <span>{session.attendees}/{session.maxAttendees} attendees</span>
-                      </div>
-                    </div>
-                    <p className="session-description">{session.description}</p>
-                    <button className="btn btn-primary">Join Session</button>
-                  </div>
-                ))}
+            <div className="alumni-stats">
+              <h3>Alumni Statistics</h3>
+              <div className="stats-card">
+                <div className="stat-item">
+                  <span className="stat-number">{batchmates.length}</span>
+                  <span className="stat-label">Total Alumni</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">{new Set(batchmates.map(b => b.batchYear)).size}</span>
+                  <span className="stat-label">Batch Years</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">{new Set(batchmates.map(b => b.course)).size}</span>
+                  <span className="stat-label">Programs</span>
+                </div>
               </div>
             </div>
           </div>
@@ -163,56 +287,183 @@ const Batchmates = () => {
                   <FaSearch />
                   <input
                     type="text"
-                    placeholder="Search batchmates..."
+                    placeholder="Search alumni by name, course, or company..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
               </div>
-              <button className="btn btn-primary">
-                <FaPlus /> Create Group Session
-              </button>
+              <div className="controls-section">
+                <div className="view-toggle">
+                  <button className="toggle-btn" onClick={() => setViewMode('grid')} aria-pressed={viewMode==='grid'}>Grid</button>
+                  <button className="toggle-btn" onClick={() => setViewMode('list')} aria-pressed={viewMode==='list'}>List</button>
+                </div>
+                <div className="course-chips">
+                  {['All', ...Array.from(new Set(batchmates.map(m => m.course).filter(Boolean)))].map(c => (
+                    <button key={c} className={`chip ${selectedCourse===c?'active':''}`} onClick={()=>setSelectedCourse(c)}>{c}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Remove create group session */}
             </div>
 
             <div className="batchmates-grid">
-              <h2>Batch {selectedBatch} Members</h2>
-              <div className="members-grid">
-                {filteredBatchmates.map(batchmate => (
-                  <div key={batchmate.id} className="member-card">
-                    <div className="member-avatar">
-                      <img src={batchmate.avatar} alt={batchmate.name} />
-                      <div className="online-status"></div>
+              <h2>All Alumni ({filteredBatchmates.length})</h2>
+              {viewMode === 'grid' ? (
+                <div className="members-grid">
+                  {filteredBatchmates.map(batchmate => (
+                    <div key={batchmate.id} className="member-card">
+                      <div className="member-avatar">
+                        <img src={batchmate.avatar} alt={batchmate.name} />
+                        <div className="online-status"></div>
+                      </div>
+                      <div className="member-info">
+                        <h3>{batchmate.name}</h3>
+                        <p className="member-course">{batchmate.course}</p>
+                        <p className="member-batch">Batch {batchmate.batchYear}</p>
+                        <p className="member-job">{batchmate.currentJob} {batchmate.company && `at ${batchmate.company}`}</p>
+                        <p className="member-location">
+                          <FaMapMarkerAlt />
+                          {batchmate.location}
+                        </p>
+                        <p className="member-active">Last active: {batchmate.lastActive}</p>
+                      </div>
+                      <div className="member-actions">
+                        <button 
+                          className="btn btn-outline" 
+                          onClick={() => openMessageModal(batchmate)}
+                          disabled={getConnectionStatus(batchmate.id) === 'blocked'}
+                        >
+                          <FaComments /> Message
+                        </button>
+                        {getConnectionStatus(batchmate.id) === 'none' && (
+                          <button 
+                            className="btn btn-primary" 
+                            onClick={() => sendConnectionRequest(batchmate.id)}
+                          >
+                            <FaUserPlus /> Connect
+                          </button>
+                        )}
+                        {getConnectionStatus(batchmate.id) === 'pending' && (
+                          <button className="btn btn-secondary" disabled>
+                            <FaClock /> Pending
+                          </button>
+                        )}
+                        {getConnectionStatus(batchmate.id) === 'accepted' && (
+                          <button className="btn btn-success" disabled>
+                            <FaUserCheck /> Connected
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="member-info">
-                      <h3>{batchmate.name}</h3>
-                      <p className="member-course">{batchmate.course}</p>
-                      <p className="member-job">{batchmate.currentJob} at {batchmate.company}</p>
-                      <p className="member-location">
-                        <FaMapMarkerAlt />
-                        {batchmate.location}
-                      </p>
-                      <p className="member-active">Last active: {batchmate.lastActive}</p>
-                    </div>
-                    <div className="member-actions">
-                      <button className="btn btn-outline">Message</button>
-                      <button className="btn btn-primary">Connect</button>
-                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="members-list">
+                  <div className="list-header">
+                    <span>Name</span>
+                    <span>Course</span>
+                    <span>Batch</span>
+                    <span>Job</span>
+                    <span>Location</span>
+                    <span>Active</span>
                   </div>
-                ))}
-              </div>
+                  {filteredBatchmates.map(batchmate => (
+                    <div key={batchmate.id} className="list-row">
+                      <span>{batchmate.name}</span>
+                      <span>{batchmate.course}</span>
+                      <span>{batchmate.batchYear}</span>
+                      <span>{batchmate.currentJob} {batchmate.company ? `at ${batchmate.company}` : ''}</span>
+                      <span>{batchmate.location}</span>
+                      <span>{batchmate.lastActive}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {filteredBatchmates.length === 0 && (
                 <div className="no-results">
-                  <h3>No batchmates found</h3>
-                  <p>Try adjusting your search terms</p>
+                  <h3>No alumni found</h3>
+                  <p>Try adjusting your search terms or filters</p>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Message Modal */}
+      {showMessageModal && selectedBatchmate && (
+        <div className="modal-overlay" onClick={() => setShowMessageModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Send Message to {selectedBatchmate.name}</h3>
+              <button 
+                className="close-button"
+                onClick={() => setShowMessageModal(false)}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="recipient-info">
+                <img 
+                  src={selectedBatchmate.avatar} 
+                  alt={selectedBatchmate.name}
+                  className="recipient-avatar"
+                />
+                <div className="recipient-details">
+                  <h4>{selectedBatchmate.name}</h4>
+                  <p>{selectedBatchmate.course}</p>
+                  {selectedBatchmate.currentJob !== 'Job not specified' && (
+                    <p className="job-info">{selectedBatchmate.currentJob} {selectedBatchmate.company && `at ${selectedBatchmate.company}`}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="message-input-container">
+                <label htmlFor="messageContent">Your Message:</label>
+                <textarea
+                  id="messageContent"
+                  value={messageContent}
+                  onChange={(e) => setMessageContent(e.target.value)}
+                  placeholder="Type your message here..."
+                  rows={4}
+                  maxLength={1000}
+                  disabled={sendingMessage}
+                />
+                <div className="character-count">
+                  {messageContent.length}/1000
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-actions">
+              <button 
+                className="btn btn-outline"
+                onClick={() => setShowMessageModal(false)}
+                disabled={sendingMessage}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={sendMessage}
+                disabled={!messageContent.trim() || sendingMessage}
+              >
+                {sendingMessage ? (
+                  <>Sending...</>
+                ) : (
+                  <><FaPaperPlane /> Send Message</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Batchmates; 
+export default Batchmates;

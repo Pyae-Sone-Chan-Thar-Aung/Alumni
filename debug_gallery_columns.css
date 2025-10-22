@@ -1,0 +1,28 @@
+/* Debug CSS - Add this temporarily to force 4 columns */
+.albums-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1.5rem !important;
+  margin-top: 2rem !important;
+}
+
+/* Force 4 columns for any screen above 800px */
+@media (min-width: 800px) {
+  .albums-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* Only use 2 columns on very small screens */
+@media (max-width: 599px) {
+  .albums-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Single column only on very small mobile */
+@media (max-width: 399px) {
+  .albums-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

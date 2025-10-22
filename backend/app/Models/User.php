@@ -17,22 +17,13 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'email',
         'first_name',
         'last_name',
-        'email',
-        'password',
-        'phone',
-        'batch',
-        'course',
-        'graduation_year',
-        'current_job',
-        'company',
-        'address',
-        'city',
-        'country',
-        'profile_image',
         'role',
-        'status',
+        'batch_year',
+        'course',
+        'is_verified',
     ];
 
     /**
@@ -41,8 +32,6 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
     ];
 
     /**
@@ -51,9 +40,13 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
     ];
+
+    /**
+     * Use UUID primary keys.
+     */
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     /**
      * Get the user's full name.
@@ -80,14 +73,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is approved.
-     */
-    public function isApproved()
-    {
-        return $this->status === 'approved';
-    }
-
-    /**
      * Get job opportunities posted by this user.
      */
     public function jobOpportunities()
@@ -100,6 +85,30 @@ class User extends Authenticatable
      */
     public function batchMessages()
     {
-        return $this->hasMany(BatchMessage::class);
+        return $this->hasMany(BatchMessage::class, 'sender_id');
+    }
+
+    /**
+     * Get profile record.
+     */
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    /**
+     * Direct messages sent by user.
+     */
+    public function sentMessages()
+    {
+        return $this->hasMany(DirectMessage::class, 'sender_id');
+    }
+
+    /**
+     * Direct messages received by user.
+     */
+    public function receivedMessages()
+    {
+        return $this->hasMany(DirectMessage::class, 'recipient_id');
     }
 } 

@@ -12,12 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('batch_messages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('batch_group_id')->constrained('batch_groups');
-            $table->foreignId('user_id')->constrained('users');
+            $table->uuid('id')->primary();
+            $table->uuid('batch_group_id');
+            $table->foreign('batch_group_id')->references('id')->on('batch_groups');
+            $table->uuid('sender_id');
+            $table->foreign('sender_id')->references('id')->on('users');
             $table->text('message');
-            $table->string('type')->default('message'); // message, announcement
-            $table->timestamps();
+            $table->timestampsTz();
         });
     }
 

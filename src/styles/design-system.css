@@ -1,0 +1,91 @@
+/* UIC Alumni Portal - Design System (Global) */
+/* Tokens, resets, typography, components */
+
+:root {
+  /* Core brand - Pink & Light Blue theme */
+  --uic-pink: #e91e63;
+  --uic-dark-pink: #c2185b;
+  --uic-light-pink: #fde4ec;
+  --uic-light-blue: #8ecae6;
+  --uic-blue: #219ebc;
+  --uic-dark-blue: #126782;
+
+  /* Backward-compatible aliases */
+  --color-primary: var(--uic-pink);
+  --color-primary-600: var(--uic-dark-pink);
+  --color-primary-700: #8a0e3c;
+  --color-secondary: var(--uic-light-blue);
+
+  /* Neutral scale */
+  --color-bg: #f7fbff; /* page bg (very light blue) */
+  --color-surface: #ffffff; /* cards */
+  --color-border: #e5e7eb;
+  --color-text: #111827; /* headings */
+  --color-text-600: #374151; /* body */
+  --color-text-500: #6b7280; /* muted */
+
+  /* States */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.10);
+  --shadow-lg: 0 12px 28px rgba(16, 24, 40, 0.12);
+}
+
+/* CSS Reset (minimal) */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text-600); }
+img { max-width: 100%; display: block; }
+
+/* Typography */
+body, button, input, select, textarea {
+  font-family: 'Inter', 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 { color: var(--color-text); letter-spacing: -0.01em; }
+
+/* Components */
+.button { 
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid transparent;
+  font-weight: 600; cursor: pointer; transition: all .2s ease; text-decoration: none; min-height: 40px;
+}
+.button--primary {
+  background: linear-gradient(135deg, var(--uic-pink), var(--uic-dark-pink));
+  color: #fff; box-shadow: var(--shadow-md);
+}
+.button--primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.button--primary:active { transform: translateY(0); filter: brightness(0.95); }
+.button--secondary { background: linear-gradient(135deg, var(--uic-light-blue), var(--uic-blue)); color: #083344; }
+.button--outline { background: #fff; color: var(--uic-pink); border-color: var(--uic-pink); }
+
+.input {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border); background: #fff; color: var(--color-text-600);
+  transition: border-color .2s ease, box-shadow .2s ease; font-size: 15px;
+}
+.input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(139,0,0,0.12); }
+
+.card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: 20px;
+}
+
+.navbar--brand { color: #fff; font-weight: 700; text-decoration: none; }
+
+/* Chatbot */
+.chatbot--bubble-user { background: var(--color-primary); color: #fff; }
+.chatbot--bubble-bot { background: #f3f4f6; color: #111827; }
+
+/* Utilities */
+.text-muted { color: var(--color-text-500); }
+.text-strong { color: var(--color-text); font-weight: 700; }
+.rounded { border-radius: var(--radius-sm); }
+.shadow { box-shadow: var(--shadow-md); }

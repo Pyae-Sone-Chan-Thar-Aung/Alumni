@@ -12,15 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('news', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('title');
             $table->text('content');
-            $table->string('category');
-            $table->string('author');
-            $table->string('image')->nullable();
+            $table->string('category')->nullable();
+            $table->string('author')->nullable();
+            $table->string('image_url')->nullable();
             $table->boolean('is_important')->default(false);
-            $table->boolean('is_published')->default(true);
-            $table->timestamps();
+            $table->boolean('is_published')->default(false);
+            $table->timestampTz('published_at')->nullable();
+            $table->timestampsTz();
         });
     }
 

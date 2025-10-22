@@ -12,21 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('job_opportunities', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('title');
             $table->text('description');
             $table->string('company');
             $table->string('location');
-            $table->string('field'); // Tech, Medical, Governance, Engineering, Teaching, Entertainment, Business
-            $table->string('type'); // Full-time, Part-time, Contract, Internship
+            $table->enum('job_type', ['Full-time','Part-time','Contract','Internship']);
             $table->string('salary_range')->nullable();
-            $table->string('contact_email');
+            $table->text('requirements')->nullable();
+            $table->string('contact_email')->nullable();
             $table->string('contact_phone')->nullable();
-            $table->string('website')->nullable();
-            $table->date('deadline')->nullable();
+            $table->date('application_deadline')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->foreignId('posted_by')->constrained('users');
-            $table->timestamps();
+            $table->uuid('posted_by');
+            $table->foreign('posted_by')->references('id')->on('users');
+            $table->timestampsTz();
         });
     }
 

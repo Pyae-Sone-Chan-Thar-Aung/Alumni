@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { STORAGE_KEYS } from '../config/constants';
+import { getLocalStorage, setLocalStorage, removeLocalStorage, handleApiError } from '../utils';
 
 const AuthContext = createContext();
 
@@ -16,33 +18,58 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
+    try {
+      const token = getLocalStorage(STORAGE_KEYS.auth.token);
+      const userData = getLocalStorage(STORAGE_KEYS.auth.user);
+      
+      if (token && userData) {
+        setIsAuthenticated(true);
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Error loading auth data:', handleApiError(error));
+      // Clear potentially corrupted data
+      removeLocalStorage(STORAGE_KEYS.auth.token);
+      removeLocalStorage(STORAGE_KEYS.auth.user);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = (userData, token) => {
-    setIsAuthenticated(true);
-    setUser(userData);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    try {
+      setIsAuthenticated(true);
+      setUser(userData);
+      setLocalStorage(STORAGE_KEYS.auth.token, token);
+      setLocalStorage(STORAGE_KEYS.auth.user, userData);
+    } catch (error) {
+      console.error('Error saving auth data:', handleApiError(error));
+      throw error;
+    }
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    try {
+      setIsAuthenticated(false);
+      setUser(null);
+      removeLocalStorage(STORAGE_KEYS.auth.token);
+      removeLocalStorage(STORAGE_KEYS.auth.user);
+    } catch (error) {
+      console.error('Error during logout:', handleApiError(error));
+      // Still perform logout even if storage cleanup fails
+      setIsAuthenticated(false);
+      setUser(null);
+    }
   };
 
   const updateUser = (userData) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    try {
+      setUser(userData);
+      setLocalStorage(STORAGE_KEYS.auth.user, userData);
+    } catch (error) {
+      console.error('Error updating user data:', handleApiError(error));
+      throw error;
+    }
   };
 
   const value = {

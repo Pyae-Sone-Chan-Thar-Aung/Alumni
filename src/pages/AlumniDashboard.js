@@ -62,26 +62,38 @@ const AlumniDashboard = () => {
     ]);
   }, []);
 
+  const displayName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.name || user?.email;
+
   return (
     <div className="alumni-dashboard">
       <div className="container">
         <div className="dashboard-header">
           <div className="welcome-section">
-            <h1>Welcome back, {user?.name}!</h1>
+            <h1>Welcome back, {displayName}!</h1>
             <p>Here's what's happening in your alumni community</p>
           </div>
-          <div className="quick-actions">
-            <button className="btn btn-primary">
-              <FaEdit /> Update Profile
-            </button>
-            <button className="btn btn-outline">
-              <FaBell /> View Notifications
-            </button>
+          <div className="alumni-actions">
+            <div className="alumni-actions-grid">
+              <button className="alumni-action-card edit" type="button">
+                <div className="alumni-action-icon edit"><FaEdit /></div>
+                <div className="alumni-action-text">
+                  <div className="alumni-action-title">Update Profile</div>
+                  <div className="alumni-action-sub">Keep your info current</div>
+                </div>
+              </button>
+              <button className="alumni-action-card notify" type="button">
+                <div className="alumni-action-icon notify"><FaBell /></div>
+                <div className="alumni-action-text">
+                  <div className="alumni-action-title">Notifications</div>
+                  <div className="alumni-action-sub">See updates & alerts</div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="dashboard-stats">
-          <div className="stat-card">
+          <div className="stat-card total">
             <div className="stat-icon">
               <FaUsers />
             </div>
@@ -90,7 +102,7 @@ const AlumniDashboard = () => {
               <p>Total Alumni</p>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card batch">
             <div className="stat-icon">
               <FaUser />
             </div>
@@ -99,7 +111,7 @@ const AlumniDashboard = () => {
               <p>Batchmates</p>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card jobs">
             <div className="stat-icon">
               <FaBriefcase />
             </div>
@@ -108,7 +120,7 @@ const AlumniDashboard = () => {
               <p>Job Opportunities</p>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card events">
             <div className="stat-icon">
               <FaCalendarAlt />
             </div>
@@ -187,8 +199,8 @@ const AlumniDashboard = () => {
             <div className="sidebar-section">
               <h3>Your Information</h3>
               <div className="user-info">
-                <p><strong>Batch:</strong> {user?.batch}</p>
-                <p><strong>Course:</strong> {user?.course}</p>
+                <p><strong>Batch:</strong> {user?.batch || user?.batch_year || 'N/A'}</p>
+                <p><strong>Course:</strong> {user?.course || 'N/A'}</p>
                 <p><strong>Status:</strong> <span className="status-approved">Approved</span></p>
               </div>
             </div>

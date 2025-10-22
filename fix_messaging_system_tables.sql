@@ -1,0 +1,324 @@
+-- ===================================================================
+-- MESSAGING SYSTEM TABLES FIX
+-- ===================================================================
+-- This script adds the missing messaging system tables to the existing database
+-- Run this in your Supabase SQL Editor to fix the messaging system
+-- ===================================================================
+
+-- ===================================================================
+-- SECTION 1: CREATE MESSAGING SYSTEM TABLES
+-- ===================================================================
+
+-- 1.1: USER_CONNECTIONS TABLE - Track connection requests and status
+CREATE TABLE IF NOT EXISTS public.user_connections (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    requester_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'blocked')),
+    message TEXT, -- Optional message with connection request
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(requester_id, recipient_id) -- Prevent duplicate connections
+);
+
+-- 1.2: MESSAGES TABLE - Store all messages between alumni
+CREATE TABLE IF NOT EXISTS public.messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    subject VARCHAR(255),
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 1.3: NOTIFICATIONS TABLE - Track all notifications for users
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('connection_request', 'connection_accepted', 'message_received', 'message_read')),
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    related_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    related_message_id BIGINT REFERENCES public.messages(id) ON DELETE CASCADE,
+    related_connection_id UUID REFERENCES public.user_connections(id) ON DELETE CASCADE,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ===================================================================
+-- SECTION 2: CREATE INDEXES FOR PERFORMANCE
+-- ===================================================================
+
+CREATE INDEX IF NOT EXISTS idx_user_connections_requester ON public.user_connections(requester_id);
+CREATE INDEX IF NOT EXISTS idx_user_connections_recipient ON public.user_connections(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_user_connections_status ON public.user_connections(status);
+CREATE INDEX IF NOT EXISTS idx_user_connections_created_at ON public.user_connections(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient ON public.messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_messages_is_read ON public.messages(is_read);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON public.notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at);
+
+-- ===================================================================
+-- SECTION 3: CREATE HELPER FUNCTIONS
+-- ===================================================================
+
+-- 3.1: Create function for automatic connection notifications
+CREATE OR REPLACE FUNCTION create_connection_notification()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Create notification for recipient when connection request is made
+    IF NEW.status = 'pending' THEN
+        INSERT INTO public.notifications (
+            user_id,
+            type,
+            title,
+            message,
+            related_user_id,
+            related_connection_id
+        ) VALUES (
+            NEW.recipient_id,
+            'connection_request',
+            'New Connection Request',
+            (SELECT first_name || ' ' || last_name FROM public.users WHERE id = NEW.requester_id) || ' wants to connect with you',
+            NEW.requester_id,
+            NEW.id
+        );
+    END IF;
+    
+    -- Create notification for requester when connection is accepted
+    IF NEW.status = 'accepted' AND OLD.status = 'pending' THEN
+        INSERT INTO public.notifications (
+            user_id,
+            type,
+            title,
+            message,
+            related_user_id,
+            related_connection_id
+        ) VALUES (
+            NEW.requester_id,
+            'connection_accepted',
+            'Connection Accepted',
+            (SELECT first_name || ' ' || last_name FROM public.users WHERE id = NEW.recipient_id) || ' accepted your connection request',
+            NEW.recipient_id,
+            NEW.id
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3.2: Create function for message notifications
+CREATE OR REPLACE FUNCTION create_message_notification()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Create notification for recipient when message is sent
+    INSERT INTO public.notifications (
+        user_id,
+        type,
+        title,
+        message,
+        related_user_id,
+        related_message_id
+    ) VALUES (
+        NEW.recipient_id,
+        'message_received',
+        'New Message',
+        (SELECT first_name || ' ' || last_name FROM public.users WHERE id = NEW.sender_id) || ' sent you a message',
+        NEW.sender_id,
+        NEW.id
+    );
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3.3: Create function to mark message as read and create read notification
+CREATE OR REPLACE FUNCTION mark_message_read(message_id BIGINT, user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    message_record RECORD;
+BEGIN
+    -- Get the message
+    SELECT * INTO message_record FROM public.messages WHERE id = message_id;
+    
+    -- Check if user is the recipient
+    IF message_record.recipient_id != user_id THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Mark message as read
+    UPDATE public.messages 
+    SET is_read = TRUE, read_at = NOW()
+    WHERE id = message_id;
+    
+    -- Create read notification for sender
+    INSERT INTO public.notifications (
+        user_id,
+        type,
+        title,
+        message,
+        related_user_id,
+        related_message_id
+    ) VALUES (
+        message_record.sender_id,
+        'message_read',
+        'Message Read',
+        (SELECT first_name || ' ' || last_name FROM public.users WHERE id = user_id) || ' read your message',
+        user_id,
+        message_id
+    );
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ===================================================================
+-- SECTION 4: CREATE TRIGGERS
+-- ===================================================================
+
+-- 4.1: Create trigger for connection notifications
+DROP TRIGGER IF EXISTS trigger_connection_notifications ON public.user_connections;
+CREATE TRIGGER trigger_connection_notifications
+    AFTER INSERT OR UPDATE ON public.user_connections
+    FOR EACH ROW
+    EXECUTE FUNCTION create_connection_notification();
+
+-- 4.2: Create trigger for message notifications
+DROP TRIGGER IF EXISTS trigger_message_notifications ON public.messages;
+CREATE TRIGGER trigger_message_notifications
+    AFTER INSERT ON public.messages
+    FOR EACH ROW
+    EXECUTE FUNCTION create_message_notification();
+
+-- 4.3: Create trigger for updated_at on messaging tables
+CREATE TRIGGER update_user_connections_updated_at
+    BEFORE UPDATE ON public.user_connections
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_messages_updated_at
+    BEFORE UPDATE ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- ===================================================================
+-- SECTION 5: ENABLE ROW LEVEL SECURITY (RLS)
+-- ===================================================================
+
+ALTER TABLE public.user_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- ===================================================================
+-- SECTION 6: CREATE RLS POLICIES
+-- ===================================================================
+
+-- 6.1: User connections policies
+DROP POLICY IF EXISTS "Users can view their own connections" ON public.user_connections;
+CREATE POLICY "Users can view their own connections" ON public.user_connections
+    FOR SELECT USING (requester_id = auth.uid() OR recipient_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can create connection requests" ON public.user_connections;
+CREATE POLICY "Users can create connection requests" ON public.user_connections
+    FOR INSERT WITH CHECK (requester_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update their own connections" ON public.user_connections;
+CREATE POLICY "Users can update their own connections" ON public.user_connections
+    FOR UPDATE USING (requester_id = auth.uid() OR recipient_id = auth.uid());
+
+-- 6.2: Messages policies
+DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
+CREATE POLICY "Users can view their own messages" ON public.messages
+    FOR SELECT USING (sender_id = auth.uid() OR recipient_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+CREATE POLICY "Users can send messages" ON public.messages
+    FOR INSERT WITH CHECK (sender_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update their own messages" ON public.messages;
+CREATE POLICY "Users can update their own messages" ON public.messages
+    FOR UPDATE USING (sender_id = auth.uid() OR recipient_id = auth.uid());
+
+-- 6.3: Notifications policies
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
+CREATE POLICY "Users can view their own notifications" ON public.notifications
+    FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
+CREATE POLICY "Users can update their own notifications" ON public.notifications
+    FOR UPDATE USING (user_id = auth.uid());
+
+-- ===================================================================
+-- SECTION 7: GRANT PERMISSIONS
+-- ===================================================================
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_connections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.messages TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO authenticated;
+
+GRANT EXECUTE ON FUNCTION create_connection_notification TO authenticated;
+GRANT EXECUTE ON FUNCTION create_message_notification TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_message_read TO authenticated;
+
+-- ===================================================================
+-- SECTION 8: VALIDATION & DIAGNOSTICS
+-- ===================================================================
+
+-- Check for missing tables
+DO $$
+DECLARE
+    missing_tables TEXT[] := ARRAY[]::TEXT[];
+    table_name TEXT;
+BEGIN
+    FOR table_name IN 
+        SELECT unnest(ARRAY['user_connections', 'messages', 'notifications'])
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = table_name
+        ) THEN
+            missing_tables := array_append(missing_tables, table_name);
+        END IF;
+    END LOOP;
+    
+    IF array_length(missing_tables, 1) > 0 THEN
+        RAISE NOTICE 'WARNING: Missing tables: %', array_to_string(missing_tables, ', ');
+    ELSE
+        RAISE NOTICE '✅ SUCCESS: All messaging system tables exist!';
+    END IF;
+END $$;
+
+-- ===================================================================
+-- SCRIPT COMPLETION
+-- ===================================================================
+
+SELECT 
+    'MESSAGING SYSTEM TABLES CREATED SUCCESSFULLY!' as status,
+    'All messaging tables, indexes, functions, triggers, and policies have been created.' as message,
+    NOW() as completed_at;
+
+-- ===================================================================
+-- IMPORTANT NOTES:
+-- ===================================================================
+-- 1. The messaging system now includes:
+--    - user_connections table for connection requests
+--    - messages table for direct messaging
+--    - notifications table for system notifications
+--
+-- 2. All tables have proper foreign key relationships to the users table
+--
+-- 3. RLS policies ensure users can only access their own data
+--
+-- 4. Automatic notifications are created via triggers
+--
+-- 5. Test the messaging system by navigating to the Messages page
+-- ===================================================================

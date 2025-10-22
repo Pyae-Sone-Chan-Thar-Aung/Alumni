@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import supabase from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { FaEye, FaEyeSlash, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaEnvelope, FaLock, FaUniversity } from 'react-icons/fa';
 import './Login.css';
 
 const Login = () => {
@@ -12,8 +13,17 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectPath = user.role === 'admin' ? '/admin-dashboard' : '/alumni-dashboard';
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -27,50 +37,182 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Simulate API call
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      console.log('🔐 Login attempt for:', formData.email);
+
+      // 1) Attempt Supabase authentication first
+      const { data: auth, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        login(data.user, data.token);
-        toast.success('Login successful!');
-        navigate(data.user.role === 'admin' ? '/admin-dashboard' : '/alumni-dashboard');
+      if (signInError) {
+        console.error('❌ Auth error:', signInError);
+        toast.error('Invalid email or password. Please check your credentials.');
+        return;
+      }
+
+      console.log('✅ Auth successful');
+      const supaUser = auth.user;
+
+      // 2) Ensure application user record exists (create if missing)
+      let { data: userRecord, error: fetchUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', supaUser.id)
+        .maybeSingle();
+
+      if (fetchUserError) {
+        console.warn('⚠️ User fetch error (continuing):', fetchUserError);
+      }
+
+      if (!userRecord) {
+        console.log('🆕 No application user record found. Creating pending user...');
+        const firstName = supaUser?.user_metadata?.first_name || null;
+        const lastName = supaUser?.user_metadata?.last_name || null;
+
+        const { data: insertedUser, error: insertUserError } = await supabase
+          .from('users')
+          .insert({
+            id: supaUser.id,
+            email: supaUser.email,
+            first_name: firstName,
+            last_name: lastName,
+            role: 'alumni',
+            approval_status: 'pending',
+            is_verified: false,
+            registration_date: new Date().toISOString()
+          })
+          .select('*')
+          .single();
+
+        if (insertUserError) {
+          console.error('❌ Failed to create application user:', insertUserError);
+          toast.error('Your account could not be initialized. Please contact support.');
+          // Sign out to avoid partial sessions
+          await supabase.auth.signOut();
+          return;
+        }
+        userRecord = insertedUser;
+
+        // Create a minimal profile record (optional)
+        await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: supaUser.id,
+            first_name: firstName,
+            last_name: lastName,
+            country: 'Philippines'
+          })
+          .select()
+          .maybeSingle();
+      }
+
+      // 3) Load profile (optional)
+      let profile = null;
+      try {
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', userRecord.id)
+          .maybeSingle();
+        profile = profileData || null;
+      } catch (profileError) {
+        console.warn('⚠️ Could not load profile:', profileError);
+      }
+
+      console.log('✅ User loaded:', {
+        email: userRecord.email,
+        role: userRecord.role,
+        approval_status: userRecord.approval_status
+      });
+
+      // 4) Enforce approval gating after we have an authenticated session
+      if (userRecord.approval_status === 'pending') {
+        console.warn('⚠️ Account pending approval');
+        toast.error('Your account is pending admin approval. You will be notified once approved.');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (userRecord.approval_status === 'rejected') {
+        console.warn('⚠️ Account rejected');
+        toast.error('Your registration has been rejected. Please contact the administrator.');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (userRecord.approval_status !== 'approved') {
+        console.warn('⚠️ Account not approved:', userRecord.approval_status);
+        toast.error('Your account is not approved for login. Please contact the administrator.');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      console.log('✅ Approval status check passed');
+
+      // 5) Build app user object
+      const userName = profile && profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : userRecord.first_name && userRecord.last_name
+          ? `${userRecord.first_name} ${userRecord.last_name}`.trim()
+          : userRecord.email.split('@')[0];
+
+      const appUser = {
+        id: userRecord.id,
+        name: userName,
+        email: userRecord.email,
+        role: userRecord.role,
+        approval_status: userRecord.approval_status,
+        profile: profile || null
+      };
+
+      // 6) Update last login
+      await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userRecord.id);
+
+      // 7) Persist session in app context
+      login(appUser, auth.session?.access_token || '');
+      toast.success(`Welcome back, ${userName}!`);
+
+      // Navigate based on role
+      if (appUser.role === 'admin') {
+        navigate('/admin-dashboard');
       } else {
-        const error = await response.json();
-        toast.error(error.message || 'Login failed');
+        navigate('/alumni-dashboard');
       }
     } catch (error) {
-      // For demo purposes, simulate successful login
-      const mockUser = {
-        id: 1,
-        name: 'John Doe',
-        email: formData.email,
-        role: formData.email.includes('admin') ? 'admin' : 'alumni',
-        batch: '2020',
-        course: 'BS Computer Science'
-      };
-      
-      login(mockUser, 'mock-token');
-      toast.success('Login successful!');
-      navigate(mockUser.role === 'admin' ? '/admin-dashboard' : '/alumni-dashboard');
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred during login');
     } finally {
       setLoading(false);
     }
   };
+
+  // If already authenticated, show loading
+  if (isAuthenticated) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
       <div className="container">
         <div className="login-container">
           <div className="login-header">
-            <h1>Welcome Back</h1>
-            <p>Sign in to your UIC Alumni Portal account</p>
+            <div className="logo-section">
+
+              <div className="brand-text">
+                <h3 className="brand-title">Welcome Home UICian!</h3>
+                <p className="brand-subtitle">CCS Alumni Portal System</p>
+              </div>
+            </div>
+            <p className="welcome-text">Sign in to connect with your Alma Mater and fellow alumni.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form">
@@ -85,7 +227,7 @@ const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Enter your email"
+                placeholder="your.email@uic.edu.ph"
                 required
               />
             </div>
@@ -118,10 +260,10 @@ const Login = () => {
             <div className="form-options">
               <label className="checkbox-label">
                 <input type="checkbox" />
-                <span>Remember me</span>
+                <span>Keep me signed in</span>
               </label>
               <Link to="/forgot-password" className="forgot-link">
-                Forgot Password?
+                Need help signing in?
               </Link>
             </div>
 
@@ -136,20 +278,22 @@ const Login = () => {
 
           <div className="login-footer">
             <p>
-              Don't have an account?{' '}
+              New to UIC Alumni Portal?{' '}
               <Link to="/register" className="register-link">
-                Register here
+                Create your account
               </Link>
+            </p>
+            <p className="help-text">
+              Need assistance? Contact the Alumni Office at{' '}
+              <a href="mailto:alumni@uic.edu.ph" className="contact-link">
+                alumni@uic.edu.ph
+              </a>
             </p>
           </div>
 
-          <div className="demo-accounts">
-            <h3>Demo Accounts</h3>
-            <div className="demo-account">
-              <strong>Admin:</strong> admin@uic.edu.ph / password123
-            </div>
-            <div className="demo-account">
-              <strong>Alumni:</strong> alumni@uic.edu.ph / password123
+          <div className="info-section">
+            <div className="info-card">
+              <strong>Note:</strong> New registrations require admin approval before login
             </div>
           </div>
         </div>

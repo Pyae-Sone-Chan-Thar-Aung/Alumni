@@ -1,0 +1,176 @@
+================================================================================
+🔄 CCS ALUMNI PORTAL - COMPLETE DATABASE RESET
+================================================================================
+
+Your database is having connection issues. Let's start completely fresh!
+
+================================================================================
+📂 IMPORTANT FILES (Use These Only!)
+================================================================================
+
+1. DROP_ALL_DATABASE.sql
+   → Drops everything in your database
+   → Run this FIRST in Supabase SQL Editor
+
+2. FRESH_DATABASE_COMPLETE.sql
+   → Creates fresh database with all tables, functions, policies
+   → Run this SECOND in Supabase SQL Editor
+
+3. storage_setup_instructions.md
+   → Step-by-step guide to create storage buckets
+   → Do this THIRD via Supabase Dashboard UI
+
+4. DATABASE_RESET_GUIDE.md
+   → Complete guide with detailed instructions
+   → Read this for full walkthrough
+
+5. DATABASE_FILES_README.md
+   → Overview of all database files
+   → Reference guide for understanding the setup
+
+================================================================================
+⚡ QUICK START (5 STEPS)
+================================================================================
+
+STEP 1: DROP EVERYTHING
+------------------------
+1. Open Supabase Dashboard
+2. Go to SQL Editor
+3. Copy all contents from DROP_ALL_DATABASE.sql
+4. Paste and click RUN
+5. Wait for "✅ Database successfully cleaned!"
+
+STEP 2: CREATE FRESH DATABASE
+------------------------------
+1. Still in Supabase SQL Editor
+2. Copy all contents from FRESH_DATABASE_COMPLETE.sql
+3. Paste and click RUN
+4. Wait for "✅ SUCCESS! All 8 tables created!"
+
+STEP 3: DELETE OLD STORAGE BUCKETS
+-----------------------------------
+1. Go to Supabase Dashboard → Storage
+2. Delete these buckets (if they exist):
+   - alumni-profiles
+   - gallery-images
+   - news-images
+
+STEP 4: CREATE NEW STORAGE BUCKETS
+-----------------------------------
+1. Follow the detailed instructions in storage_setup_instructions.md
+2. Create 3 buckets with policies
+3. This takes about 10 minutes
+
+STEP 5: REGISTER ADMIN USER
+----------------------------
+1. Start your React app: npm start
+2. Register using one of these emails:
+   - paung_230000001724@uic.edu.ph
+   - admin@uic.edu.ph
+3. Login and verify admin access
+
+================================================================================
+✅ VERIFICATION
+================================================================================
+
+After completing all steps, test:
+
+□ Can register new user
+□ Can login as admin
+□ Can see Admin Dashboard
+□ Can upload profile picture
+□ Can create news article
+□ Can create gallery album
+□ Can post job opportunity
+□ No connection errors in console
+
+================================================================================
+🐛 TROUBLESHOOTING
+================================================================================
+
+Problem: "relation does not exist"
+Solution: Make sure FRESH_DATABASE_COMPLETE.sql ran successfully
+
+Problem: "function is_admin() does not exist"
+Solution: Run FRESH_DATABASE_COMPLETE.sql BEFORE creating storage buckets
+
+Problem: Images not uploading
+Solution: Verify storage buckets are created with correct policies
+
+Problem: Registration not working
+Solution: Check .env file has correct REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY
+
+================================================================================
+🗑️ OLD FILES (IGNORE THESE)
+================================================================================
+
+These are old SQL files from previous attempts. You can delete them:
+- alumni_approval_system.sql
+- complete_tracer_study_setup.sql
+- create_gallery_tables.sql
+- database_diagnostic.sql
+- disable_rls_for_registration.sql
+- final_database_setup.sql
+- fix_*.sql (all fix files)
+- setup_admin_user.sql
+- supabase_setup.sql
+- supabase_complete_setup.sql
+- test_storage.sql
+- update_tracer_study_schema.sql
+
+================================================================================
+📖 NEED MORE HELP?
+================================================================================
+
+Read DATABASE_RESET_GUIDE.md for detailed step-by-step instructions with
+troubleshooting and verification commands.
+
+Read DATABASE_FILES_README.md for complete overview of what each file does.
+
+================================================================================
+🎯 GOAL
+================================================================================
+
+After this reset, you will have:
+✅ Clean database with 8 tables
+✅ All RLS policies working
+✅ 3 storage buckets configured
+✅ 1 admin user registered
+✅ No connection issues
+✅ All features working
+
+================================================================================
+⏱️ TIME REQUIRED
+================================================================================
+
+- Step 1 (Drop): 30 seconds
+- Step 2 (Create): 1 minute
+- Step 3 (Delete buckets): 1 minute
+- Step 4 (Create buckets): 10 minutes
+- Step 5 (Register): 2 minutes
+
+Total: ~15 minutes
+
+================================================================================
+⚠️ FINAL WARNING
+================================================================================
+
+Running DROP_ALL_DATABASE.sql will PERMANENTLY DELETE ALL DATA:
+- All users
+- All profiles
+- All news
+- All gallery photos
+- All job postings
+- All tracer study responses
+
+BACKUP FIRST if you need to keep any data!
+
+================================================================================
+🚀 READY TO START?
+================================================================================
+
+Open DATABASE_RESET_GUIDE.md and follow the step-by-step instructions!
+
+Good luck! 🎓
+
+================================================================================

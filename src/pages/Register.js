@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import supabase from '../config/supabaseClient';
 import { toast } from 'react-toastify';
-import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock, FaGraduationCap, FaCalendarAlt, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock, FaGraduationCap, FaCalendarAlt, FaPhone, FaMapMarkerAlt, FaCamera, FaUpload } from 'react-icons/fa';
 import './Register.css';
 
 const Register = () => {
@@ -11,6 +12,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    studentId: '',
     phone: '',
     batch: '',
     course: '',
@@ -24,13 +26,18 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const navigate = useNavigate();
 
   const courses = [
     'BS Accountancy',
+    'BS Archiecture',
+    'BS Psychology',
     'BS Business Administration',
     'BS Computer Science',
     'BS Information Technology',
+    'BS Information Systems',
     'BS Computer Engineering',
     'BS Electronics Engineering',
     'BS Civil Engineering',
@@ -48,8 +55,12 @@ const Register = () => {
     'BS Education',
     'BS Tourism Management',
     'BS Hospitality Management',
-    'BS Criminology',
-    'BS Architecture',
+    'BS Commerce',
+    'BS Accounting',
+    'BS Marketing',
+    'BA Communication',
+    'BA English',
+
     'Other'
   ];
 
@@ -66,6 +77,78 @@ const Register = () => {
     });
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error('Image size must be less than 5MB');
+        return;
+      }
+      
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only JPG, JPEG, and PNG files are allowed');
+        return;
+      }
+
+      setProfileImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadProfileImage = async (userId) => {
+    if (!profileImage) return null;
+
+    try {
+      const fileExt = profileImage.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
+
+      console.log('📤 Uploading profile image...');
+      console.log('User ID:', userId);
+      console.log('File:', profileImage.name);
+      console.log('File size:', profileImage.size, 'bytes');
+      console.log('File type:', profileImage.type);
+      console.log('Target path:', filePath);
+      console.log('Bucket:', 'alumni-profiles');
+
+      const { data, error } = await supabase.storage
+        .from('alumni-profiles')
+        .upload(filePath, profileImage, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('❌ Storage upload error:', error);
+        console.error('Error code:', error.statusCode);
+        console.error('Error message:', error.message);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      console.log('✅ Upload successful:', data);
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('alumni-profiles')
+        .getPublicUrl(filePath);
+
+      console.log('✅ Public URL generated:', publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error('❌ Image upload error:', error);
+      console.error('Error stack:', error.stack);
+      throw error;
+    }
+  };
+
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
@@ -80,32 +163,58 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
 
     try {
-      // Simulate API call
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      // First, create a pending registration record with all the form data
+      const registrationData = {
+        email: formData.email,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phone,
+        course: formData.course,
+        batch_year: parseInt(formData.batch),
+        graduation_year: parseInt(formData.graduationYear),
+        current_job: formData.currentJob,
+        company: formData.company,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        student_id: formData.studentId,
+        status: 'pending',
+        submitted_at: new Date().toISOString()
+      };
 
-      if (response.ok) {
-        toast.success('Registration submitted successfully! Please wait for admin approval.');
-        navigate('/login');
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Registration failed');
+      const { error: regError } = await supabase
+        .from('pending_registrations')
+        .insert(registrationData);
+
+      if (regError) {
+        console.error('Registration data error:', regError);
+        toast.error('Failed to save registration data. Please try again.');
+        return;
       }
-    } catch (error) {
-      // For demo purposes, simulate successful registration
-      toast.success('Registration submitted successfully! Please wait for admin approval.');
+
+      // Then create the auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: { data: { first_name: formData.firstName, last_name: formData.lastName } }
+      });
+      
+      if (authError) {
+        toast.error(authError.message || 'Registration failed');
+        return;
+      }
+
+      toast.success('Registration created! Please check your email to confirm your account. After you sign in, your application will be submitted for admin approval.');
       navigate('/login');
+    } catch (error) {
+      console.error('Unexpected error during registration:', error);
+      toast.error('Unexpected error during registration');
     } finally {
       setLoading(false);
     }
@@ -121,6 +230,38 @@ const Register = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="register-form">
+            <div className="form-section">
+              <h3>Profile Picture</h3>
+              <div className="image-upload-section">
+                <div className="image-preview-container">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Profile Preview" className="image-preview" />
+                  ) : (
+                    <div className="image-placeholder">
+                      <FaCamera size={40} />
+                      <p>Upload Profile Picture</p>
+                    </div>
+                  )}
+                </div>
+                <div className="image-upload-controls">
+                  <input
+                    type="file"
+                    id="profileImage"
+                    accept="image/jpeg,image/jpg,image/png"
+                    onChange={handleImageChange}
+                    className="image-input"
+                    style={{ display: 'none' }}
+                  />
+                  <label htmlFor="profileImage" className="image-upload-btn">
+                    <FaUpload /> Choose Image
+                  </label>
+                  <p className="image-help-text">
+                    JPG, JPEG, or PNG. Max size: 5MB
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="form-section">
               <h3>Personal Information</h3>
               <div className="form-row">
@@ -194,6 +335,20 @@ const Register = () => {
               <h3>Academic Information</h3>
               <div className="form-row">
                 <div className="form-group">
+                  <label htmlFor="studentId" className="form-label">
+                    <FaUser /> Student ID
+                  </label>
+                  <input
+                    type="text"
+                    id="studentId"
+                    name="studentId"
+                    value={formData.studentId}
+                    onChange={handleChange}
+                    className="form-control"
+                    placeholder="Enter your student ID (optional)"
+                  />
+                </div>
+                <div className="form-group">
                   <label htmlFor="course" className="form-label">
                     <FaGraduationCap /> Course/Program
                   </label>
@@ -211,6 +366,9 @@ const Register = () => {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="batch" className="form-label">
                     <FaCalendarAlt /> Batch Year

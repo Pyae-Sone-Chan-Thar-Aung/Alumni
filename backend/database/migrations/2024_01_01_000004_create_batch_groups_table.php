@@ -12,13 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('batch_groups', function (Blueprint $table) {
-            $table->id();
-            $table->string('batch_year');
-            $table->string('name');
+            $table->uuid('id')->primary();
+            $table->integer('batch_year');
+            $table->string('course');
+            $table->string('group_name');
             $table->text('description')->nullable();
-            $table->string('image')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
+            $table->uuid('created_by')->nullable();
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->timestampsTz();
         });
     }
 

@@ -43,34 +43,42 @@ const Home = () => {
       {/* Hero Section */}
       <section className="hero">
         <div className="container">
-          <div className="hero-content">
-            <h1>Welcome to UIC Alumni Portal</h1>
-            <p>Connecting University of the Immaculate Conception graduates worldwide</p>
-            <div className="hero-buttons">
-              <Link to="/register" className="btn btn-primary">
-                Join Our Community
-              </Link>
-              <Link to="/news" className="btn btn-outline">
-                View Latest News
-              </Link>
-            </div>
-          </div>
-          <div className="hero-image">
-            <div className="hero-stats">
-              <div className="stat-item">
-                <FaUsers />
-                <span>{stats.totalAlumni.toLocaleString()}+</span>
-                <p>Alumni Worldwide</p>
+          <div className="hero-glass">
+            <div className="hero-grid">
+              <div className="hero-content">
+                <h1>Welcome to UIC-CCS Alumni Portal</h1>
+                <p style={{ whiteSpace: "pre-line" }}>
+                  {`Connecting University of the Immaculate Conception,
+College of Computer Studies graduates worldwide.`}
+                </p>
+
+                <div className="hero-buttons">
+                  <Link to="/register" className="btn btn-primary">
+                    Join Our Community
+                  </Link>
+                  <Link to="/news" className="btn btn-outline">
+                    View Latest News
+                  </Link>
+                </div>
               </div>
-              <div className="stat-item">
-                <FaBriefcase />
-                <span>{stats.jobPlacements.toLocaleString()}+</span>
-                <p>Job Placements</p>
-              </div>
-              <div className="stat-item">
-                <FaCalendarAlt />
-                <span>{stats.eventsThisYear}</span>
-                <p>Events This Year</p>
+              <div className="hero-image">
+                <div className="hero-stats">
+                  <div className="stat-item">
+                    <FaUsers />
+                    <span>{stats.totalAlumni.toLocaleString()}+</span>
+                    <p>Alumni Worldwide</p>
+                  </div>
+                  <div className="stat-item">
+                    <FaBriefcase />
+                    <span>{stats.jobPlacements.toLocaleString()}+</span>
+                    <p>Job Placements</p>
+                  </div>
+                  <div className="stat-item">
+                    <FaCalendarAlt />
+                    <span>{stats.eventsThisYear}</span>
+                    <p>Events This Year</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -110,7 +118,7 @@ const Home = () => {
               <p>Reconnect with your classmates and build lasting relationships with fellow alumni.</p>
               <Link to="/batchmates" className="feature-link">Learn More</Link>
             </div>
-            
+
             <div className="feature-card">
               <div className="feature-icon">
                 <FaBriefcase />
@@ -119,7 +127,7 @@ const Home = () => {
               <p>Explore job opportunities across various industries and advance your career.</p>
               <Link to="/job-opportunities" className="feature-link">Explore Jobs</Link>
             </div>
-            
+
             <div className="feature-card">
               <div className="feature-icon">
                 <FaNewspaper />
@@ -128,7 +136,7 @@ const Home = () => {
               <p>Stay updated with university news, events, and important announcements.</p>
               <Link to="/news" className="feature-link">View News</Link>
             </div>
-            
+
             <div className="feature-card">
               <div className="feature-icon">
                 <FaGraduationCap />
@@ -185,15 +193,17 @@ const Home = () => {
       {/* Call to Action */}
       <section className="cta">
         <div className="container">
-          <h2>Ready to Connect?</h2>
-          <p>Join our vibrant alumni community and stay connected with your alma mater.</p>
-          <div className="cta-buttons">
-            <Link to="/register" className="btn btn-primary">
-              Register Now
-            </Link>
-            <Link to="/login" className="btn btn-outline">
-              Login to Your Account
-            </Link>
+          <div className="cta-glass">
+            <h2>Ready to Connect?</h2>
+            <p>Join our vibrant alumni community and stay connected with your alma mater.</p>
+            <div className="cta-buttons">
+              <Link to="/register" className="btn btn-primary">
+                Register Now
+              </Link>
+              <Link to="/login" className="btn btn-primary">
+                Login to Your Account
+              </Link>
+            </div>
           </div>
         </div>
       </section>

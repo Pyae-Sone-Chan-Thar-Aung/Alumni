@@ -681,9 +681,12 @@ const AdminDashboard = () => {
           {/* Pending Registrations Modal */}
           {showPendingModal && (
             <div className="modal-overlay">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h2>Pending Registrations</h2>
+              <div className="pending-modal-content">
+                <div className="pending-modal-header">
+                  <div className="modal-title-section">
+                    <h2>Pending Registrations</h2>
+                    <span className="pending-count">{pendingUsers.length} pending</span>
+                  </div>
                   <button
                     className="modal-close"
                     onClick={() => setShowPendingModal(false)}
@@ -691,52 +694,113 @@ const AdminDashboard = () => {
                     <FaTimes />
                   </button>
                 </div>
-                <div className="modal-body">
+                <div className="pending-modal-body">
                   {pendingUsers.length > 0 ? (
-                    <div className="pending-users-list">
+                    <div className="pending-registrations-grid">
                       {pendingUsers.map((user) => (
-                        <div key={user.id} className="pending-user-card">
-                          <div className="user-info">
-                            {user.profile_image_url && (
-                              <img
-                                src={user.profile_image_url}
-                                alt="Profile"
-                                className="user-avatar"
-                              />
-                            )}
-                            <div className="user-details">
-                              <h3>{user.first_name} {user.last_name}</h3>
-                              <p><strong>Email:</strong> {user.email}</p>
-                              <p><strong>Program:</strong> {user.program}</p>
-                              <p><strong>Graduation Year:</strong> {user.graduation_year}</p>
-                              <p><strong>Current Job:</strong> {user.current_job || 'Not specified'}</p>
-                              <p><strong>Company:</strong> {user.company || 'Not specified'}</p>
-                              <p><strong>Phone:</strong> {user.phone || 'Not provided'}</p>
-                              <p><strong>Address:</strong> {user.address || 'Not provided'}</p>
-                              <p><strong>Submitted:</strong> {new Date(user.created_at).toLocaleDateString()}</p>
+                        <div key={user.id} className="registration-card">
+                          <div className="registration-header">
+                            <div className="profile-section">
+                              {user.profile_image_url ? (
+                                <img
+                                  src={user.profile_image_url}
+                                  alt="Profile"
+                                  className="profile-avatar"
+                                />
+                              ) : (
+                                <div className="profile-placeholder">
+                                  <FaUser />
+                                </div>
+                              )}
+                              <div className="profile-info">
+                                <h3 className="user-name">{user.first_name} {user.last_name}</h3>
+                                <p className="user-email">{user.email}</p>
+                                <span className="submission-date">
+                                  Submitted {new Date(user.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="status-badge pending">
+                              <FaClock />
+                              Pending Review
                             </div>
                           </div>
-                          <div className="user-actions">
+
+                          <div className="registration-content">
+                            <div className="info-sections">
+                              <div className="info-section">
+                                <h4><FaGraduationCap /> Academic Information</h4>
+                                <div className="info-grid">
+                                  <div className="info-item">
+                                    <span className="label">Program:</span>
+                                    <span className="value">{user.program || 'Not specified'}</span>
+                                  </div>
+                                  <div className="info-item">
+                                    <span className="label">Graduation Year:</span>
+                                    <span className="value">{user.graduation_year || 'Not specified'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="info-section">
+                                <h4><FaBuilding /> Professional Information</h4>
+                                <div className="info-grid">
+                                  <div className="info-item">
+                                    <span className="label">Current Job:</span>
+                                    <span className="value">{user.current_job || 'Not specified'}</span>
+                                  </div>
+                                  <div className="info-item">
+                                    <span className="label">Company:</span>
+                                    <span className="value">{user.company || 'Not specified'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="info-section">
+                                <h4><FaEnvelope /> Contact Information</h4>
+                                <div className="info-grid">
+                                  <div className="info-item">
+                                    <span className="label">Phone:</span>
+                                    <span className="value">{user.phone || 'Not provided'}</span>
+                                  </div>
+                                  <div className="info-item">
+                                    <span className="label">Address:</span>
+                                    <span className="value">{user.address || 'Not provided'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="registration-actions">
                             <button
-                              className="btn btn-success"
+                              className="action-btn approve-btn"
                               onClick={() => handleApproval(user.id, 'approve')}
                               disabled={loading}
                             >
-                              <FaCheckCircle /> Approve
+                              <FaCheckCircle />
+                              Approve
                             </button>
                             <button
-                              className="btn btn-danger"
+                              className="action-btn reject-btn"
                               onClick={() => handleApproval(user.id, 'reject')}
                               disabled={loading}
                             >
-                              <FaTimes /> Reject
+                              <FaTimes />
+                              Reject
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="no-pending">No pending registrations</p>
+                    <div className="no-pending-state">
+                      <div className="no-pending-icon">
+                        <FaUser />
+                      </div>
+                      <h3>No Pending Registrations</h3>
+                      <p>All registration requests have been processed.</p>
+                    </div>
                   )}
                 </div>
               </div>

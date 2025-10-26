@@ -5,7 +5,7 @@
   width: auto;
   height: 56px;
   border-radius: 28px;
-  background: #FFD700;
+  background: #6B7280;
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -36,7 +36,7 @@
   border-radius: 50%;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 0 0 3px #FFD700;
+  box-shadow: 0 0 0 3px #6B7280;
   margin-left: 0;
 }
 
@@ -403,7 +403,7 @@
   .chatbot-toggle-icon {
     width: 52px;
     height: 52px;
-    box-shadow: 0 0 0 2.5px #FFD700;
+    box-shadow: 0 0 0 2.5px #6B7280;
   }
   
   .robot-face {

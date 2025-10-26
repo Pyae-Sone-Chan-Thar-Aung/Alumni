@@ -843,8 +843,8 @@ const TracerStudy = () => {
   return (
     <div className="tracer-study-container">
       <div className="tracer-study-header">
-        <h1>University of the Immaculate Conception</h1>
-        <h2>Graduate Tracer Study</h2>
+        <h2><b>University of the Immaculate Conception</b></h2>
+        <h2>"Graduate Tracer Study"</h2>
         <p>College of Computer Studies</p>
       </div>
 

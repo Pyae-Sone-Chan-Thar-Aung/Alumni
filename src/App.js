@@ -15,6 +15,8 @@ import Home from './pages/Home';
 import News from './pages/News';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import AlumniDashboard from './pages/AlumniDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
@@ -65,6 +67,10 @@ function AppRoutes() {
           <Route path="/register" element={
             isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/alumni-profile'} /> : <Register />
           } />
+          <Route path="/forgot-password" element={
+            isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/alumni-profile'} /> : <ForgotPassword />
+          } />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected Alumni Routes */}
           <Route 

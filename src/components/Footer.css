@@ -189,7 +189,7 @@
 }
 
 .contact-info p {
-  color: #ffffff !important;
+  color: rgba(255, 255, 255, 0.9) !important;
   text-decoration: none;
   transition: all 0.3s ease;
   padding: 0.3rem 0;
@@ -200,7 +200,15 @@
 }
 
 .contact-info p svg {
-  color: #ffffff !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  flex-shrink: 0;
+}
+
+/* Force all text nodes in contact info to be white */
+.footer-section .contact-info p,
+.footer-section .contact-info p *,
+.footer .contact-info p {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .footer-bottom {

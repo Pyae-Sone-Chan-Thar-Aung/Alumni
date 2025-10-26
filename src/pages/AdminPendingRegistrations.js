@@ -344,29 +344,34 @@ const AdminPendingRegistrations = () => {
                 </div>
               </div>
 
-              <div className="card-actions">
+              <div className="card-actions" style={{ padding: '1.5rem', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb', gap: '1rem' }}>
                 <button
                   onClick={() => viewDetails(registration)}
                   className="btn btn-secondary"
+                  style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#6b7280', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', minWidth: '140px', justifyContent: 'center' }}
                 >
                   <FaEye /> View Details
                 </button>
-                <button
-                  onClick={() => handleApproval(registration, false)}
-                  className="btn btn-danger"
-                  disabled={processingId === registration.id}
-                >
-                  {processingId === registration.id ? <FaSpinner className="spin" /> : <FaTimes />}
-                  Reject
-                </button>
-                <button
-                  onClick={() => handleApproval(registration, true)}
-                  className="btn btn-success"
-                  disabled={processingId === registration.id}
-                >
-                  {processingId === registration.id ? <FaSpinner className="spin" /> : <FaCheck />}
-                  Approve
-                </button>
+                <div className="action-buttons" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => handleApproval(registration, false)}
+                    className="btn btn-danger"
+                    disabled={processingId === registration.id}
+                    style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#fca5a5', color: '#7f1d1d', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 8px rgba(252,165,165,0.3)', minWidth: '140px', justifyContent: 'center', transition: 'all 0.25s ease' }}
+                  >
+                    {processingId === registration.id ? <FaSpinner className="spin" /> : <FaTimes />}
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => handleApproval(registration, true)}
+                    className="btn btn-success"
+                    disabled={processingId === registration.id}
+                    style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#86efac', color: '#14532d', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 8px rgba(134,239,172,0.3)', minWidth: '140px', justifyContent: 'center', transition: 'all 0.25s ease' }}
+                  >
+                    {processingId === registration.id ? <FaSpinner className="spin" /> : <FaCheck />}
+                    Approve
+                  </button>
+                </div>
               </div>
             </div>
           ))}

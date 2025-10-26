@@ -275,7 +275,7 @@ const AdminDashboard = () => {
       ]);
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-      
+
       const excelData = (users || []).map((u, index) => {
         const p = profileMap.get(u.id) || {};
         return {
@@ -392,7 +392,7 @@ const AdminDashboard = () => {
               .from('alumni-profiles')
               .copy(oldPath, newPath);
             if (copyErr) throw copyErr;
-            await supabase.storage.from('alumni-profiles').remove([oldPath]).catch(() => {});
+            await supabase.storage.from('alumni-profiles').remove([oldPath]).catch(() => { });
             const { data: { publicUrl } } = supabase.storage
               .from('alumni-profiles')
               .getPublicUrl(newPath);
@@ -941,19 +941,22 @@ const AdminDashboard = () => {
 
                           <div className="registration-actions">
                             <button
-                              className="action-btn approve-btn"
+                              className={`action-btn approve-btn ${loading ? 'loading' : ''}`}
                               onClick={() => handleApproval(user.id, 'approve')}
                               disabled={loading}
+                              data-tooltip="Approve registration"
                             >
-                              <FaCheckCircle />
+                              {!loading && <FaCheckCircle />}
                               Approve
                             </button>
+
                             <button
-                              className="action-btn reject-btn"
+                              className={`action-btn reject-btn ${loading ? 'loading' : ''}`}
                               onClick={() => handleApproval(user.id, 'reject')}
                               disabled={loading}
+                              data-tooltip="Reject registration"
                             >
-                              <FaTimes />
+                              {!loading && <FaTimes />}
                               Reject
                             </button>
                           </div>

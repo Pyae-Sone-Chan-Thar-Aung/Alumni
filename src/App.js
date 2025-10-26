@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { supabase } from './config/supabaseClient';
 
 // Components
 import Navbar from './components/Navbar';
@@ -42,6 +43,46 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 function AppRoutes() {
   const { isAuthenticated, user, loading } = useAuth();
   const [showChatbot, setShowChatbot] = useState(false);
+  const navigate = useNavigate();
+
+  // Handle email confirmation
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      // Check if this is an email confirmation redirect
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      if (accessToken && type === 'signup') {
+        console.log('Processing email confirmation...');
+        
+        try {
+          // Get the user session
+          const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+          
+          if (error) throw error;
+          
+          if (user) {
+            console.log('Email confirmed successfully for:', user.email);
+            toast.success('Email confirmed successfully! Please wait for admin approval.');
+            
+            // Clear the hash from URL
+            window.history.replaceState(null, '', window.location.pathname);
+            
+            // Redirect to login page
+            setTimeout(() => {
+              navigate('/login');
+            }, 2000);
+          }
+        } catch (error) {
+          console.error('Email confirmation error:', error);
+          toast.error('Failed to confirm email. Please try again.');
+        }
+      }
+    };
+    
+    handleEmailConfirmation();
+  }, [navigate]);
 
   if (loading) {
     return (

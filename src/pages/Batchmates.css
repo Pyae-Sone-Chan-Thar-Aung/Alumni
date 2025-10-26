@@ -303,7 +303,12 @@
 /* Search Section */
 .search-section {
   width: 100%;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-section .search-bar-container {
+  width: 100%;
+  max-width: 600px;
 }
 
 .search-box {

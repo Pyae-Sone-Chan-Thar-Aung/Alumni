@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FaUsers, FaComments, FaSearch, FaPlus, FaUser, FaClock, FaMapMarkerAlt, FaTimes, FaPaperPlane, FaUserCheck, FaUserPlus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import './Batchmates.css';
+import '../components/SearchBar.css';
 
 const Batchmates = () => {
   const { user } = useAuth();
@@ -377,14 +378,22 @@ const Batchmates = () => {
           <div className="main-content">
             <div className="content-header">
               <div className="search-section">
-                <div className="search-box">
-                  <FaSearch />
-                  <input
-                    type="text"
-                    placeholder="Search alumni by name, course, or company..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                <div className="search-bar-container">
+                  <div className="search-bar-input-wrapper">
+                    <FaSearch className="search-bar-icon" />
+                    <input
+                      type="text"
+                      className="search-bar-input"
+                      placeholder="Search alumni by name, course, or company..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="controls-section">

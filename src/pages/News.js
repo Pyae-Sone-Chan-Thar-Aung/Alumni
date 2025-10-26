@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
-import { FaSearch, FaCalendarAlt, FaTag, FaNewspaper, FaBullhorn, FaGraduationCap } from 'react-icons/fa';
+import { FaSearch, FaCalendarAlt, FaTag, FaNewspaper, FaBullhorn, FaGraduationCap, FaTimes } from 'react-icons/fa';
 import './News.css';
+import '../components/SearchBar.css';
 
 const News = () => {
   const [news, setNews] = useState([]);
@@ -89,14 +90,22 @@ const News = () => {
         </div>
 
         <div className="news-filters">
-          <div className="search-box">
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search news and announcements..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="search-bar-container">
+            <div className="search-bar-input-wrapper">
+              <FaSearch className="search-bar-icon" />
+              <input
+                type="text"
+                className="search-bar-input"
+                placeholder="Search news and announcements..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
+                  <FaTimes />
+                </button>
+              )}
+            </div>
           </div>
           <div className="category-filters">
             {categories.map(category => (

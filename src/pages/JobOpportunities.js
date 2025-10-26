@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FaBriefcase, FaMapMarkerAlt, FaBuilding, FaClock, FaDollarSign, FaPlus, FaSearch, FaHeart, FaShare, FaTimes, FaSave } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import './JobOpportunities.css';
+import '../components/SearchBar.css';
 import supabase from '../config/supabaseClient';
 
 const JobOpportunities = () => {
@@ -297,14 +298,22 @@ const JobOpportunities = () => {
         </div>
 
         <div className="search-section">
-          <div className="search-box">
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search jobs by title or company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="search-bar-container">
+            <div className="search-bar-input-wrapper">
+              <FaSearch className="search-bar-icon" />
+              <input
+                type="text"
+                className="search-bar-input"
+                placeholder="Search jobs by title or company..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
+                  <FaTimes />
+                </button>
+              )}
+            </div>
           </div>
           <div className="filters-box">
             <select className="filter-select" value={selectedLocation} onChange={(e)=>setSelectedLocation(e.target.value)}>

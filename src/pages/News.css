@@ -29,6 +29,10 @@
   margin-bottom: 3rem;
 }
 
+.search-bar-container {
+  margin-bottom: 2rem;
+}
+
 .search-box {
   position: relative;
   margin-bottom: 1.5rem;

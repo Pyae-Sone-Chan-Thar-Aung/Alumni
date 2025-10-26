@@ -30,8 +30,18 @@
   margin-bottom: 3rem;
   align-items: center;
 }
+
+.search-section .search-bar-container {
+  flex: 1;
+  min-width: 300px;
+  max-width: 600px;
+}
+
 @media (max-width: 900px) {
   .search-section { grid-template-columns: 1fr; }
+  .search-section .search-bar-container {
+    max-width: 100%;
+  }
 }
 
 .search-box {

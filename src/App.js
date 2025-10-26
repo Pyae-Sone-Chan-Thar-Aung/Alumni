@@ -17,6 +17,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import AlumniDashboard from './pages/AlumniDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
@@ -71,6 +73,8 @@ function AppRoutes() {
             isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/alumni-profile'} /> : <ForgotPassword />
           } />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           
           {/* Protected Alumni Routes */}
           <Route 

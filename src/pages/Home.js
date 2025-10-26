@@ -1,42 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaGraduationCap, FaUsers, FaBriefcase, FaNewspaper, FaCalendarAlt, FaMapMarkerAlt, FaPhone, FaEnvelope } from 'react-icons/fa';
+import { supabase } from '../config/supabaseClient';
 import './Home.css';
 
 const Home = () => {
-  const [featuredNews, setFeaturedNews] = useState([
-    {
-      id: 1,
-      title: "Alumni Homecoming 2024 Registration Now Open",
-      excerpt: "Join us for the biggest alumni gathering of the year. Register now to secure your spot!",
-      date: "2024-01-15",
-      category: "Event",
-      isImportant: true
-    },
-    {
-      id: 2,
-      title: "New Job Opportunities in Tech Industry",
-      excerpt: "Multiple positions available for UIC alumni in leading technology companies.",
-      date: "2024-01-14",
-      category: "Career",
-      isImportant: true
-    },
-    {
-      id: 3,
-      title: "Alumni Directory Update",
-      excerpt: "Help us keep our alumni directory current by updating your information.",
-      date: "2024-01-13",
-      category: "Announcement",
-      isImportant: false
-    }
-  ]);
-
+  const [featuredNews, setFeaturedNews] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalAlumni: 25000,
-    activeMembers: 18000,
-    jobPlacements: 1500,
-    eventsThisYear: 25
+    totalAlumni: 0,
+    activeMembers: 0,
+    jobPlacements: 0,
+    eventsThisYear: 0
   });
+
+  useEffect(() => {
+    fetchNewsAndStats();
+  }, []);
+
+  const fetchNewsAndStats = async () => {
+    try {
+      // Fetch published news, prioritizing important ones
+      const { data: newsData, error: newsError } = await supabase
+        .from('news')
+        .select('*')
+        .eq('is_published', true)
+        .order('is_important', { ascending: false })
+        .order('published_at', { ascending: false })
+        .limit(6);
+
+      if (newsError) throw newsError;
+
+      // Fetch statistics
+      const [
+        { count: totalAlumni },
+        { count: activeMembers },
+        { count: jobCount },
+        { count: eventCount }
+      ] = await Promise.all([
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('approval_status', 'approved'),
+        supabase.from('job_opportunities').select('*', { count: 'exact', head: true }),
+        supabase.from('news').select('*', { count: 'exact', head: true }).eq('category', 'Event').eq('is_published', true)
+      ]);
+
+      setFeaturedNews(newsData || []);
+      setStats({
+        totalAlumni: totalAlumni || 0,
+        activeMembers: activeMembers || 0,
+        jobPlacements: jobCount || 0,
+        eventsThisYear: eventCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="home">
@@ -89,19 +109,29 @@ College of Computer Studies graduates worldwide.`}
       <section className="important-news">
         <div className="container">
           <h2>Important Announcements</h2>
-          <div className="news-grid">
-            {featuredNews.filter(news => news.isImportant).map(news => (
-              <div key={news.id} className="news-card important">
-                <div className="news-header">
-                  <span className="news-category">{news.category}</span>
-                  <span className="news-date">{new Date(news.date).toLocaleDateString()}</span>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>Loading announcements...</p>
+            </div>
+          ) : featuredNews.length > 0 ? (
+            <div className="news-grid">
+              {featuredNews.filter(news => news.is_important).slice(0, 3).map(news => (
+                <div key={news.id} className="news-card important">
+                  <div className="news-header">
+                    <span className="news-category">{news.category}</span>
+                    <span className="news-date">{new Date(news.published_at || news.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h3>{news.title}</h3>
+                  <p>{news.excerpt || news.content?.substring(0, 150) + '...'}</p>
+                  <Link to="/news" className="read-more">Read More →</Link>
                 </div>
-                <h3>{news.title}</h3>
-                <p>{news.excerpt}</p>
-                <Link to="/news" className="read-more">Read More →</Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>No announcements available at this time.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -158,15 +188,15 @@ College of Computer Studies graduates worldwide.`}
               <p>Located in the heart of Davao City, UIC has been a beacon of academic excellence since its establishment. Our commitment to quality education and character formation has produced outstanding graduates who excel in various fields worldwide.</p>
               <div className="info-stats">
                 <div className="info-stat">
-                  <span className="stat-number">50+</span>
+                  <span className="stat-number">120+</span>
                   <span className="stat-label">Years of Excellence</span>
                 </div>
                 <div className="info-stat">
-                  <span className="stat-number">25,000+</span>
+                  <span className="stat-number">250,000+</span>
                   <span className="stat-label">Alumni Worldwide</span>
                 </div>
                 <div className="info-stat">
-                  <span className="stat-number">100+</span>
+                  <span className="stat-number">55+</span>
                   <span className="stat-label">Programs Offered</span>
                 </div>
               </div>

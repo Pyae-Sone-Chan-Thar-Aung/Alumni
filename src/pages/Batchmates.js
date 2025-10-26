@@ -7,11 +7,12 @@ import './Batchmates.css';
 
 const Batchmates = () => {
   const { user } = useAuth();
-  // Removed selectedBatch state since we're showing all alumni
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [selectedCourse, setSelectedCourse] = useState('All');
+  const [showBatchmatesOnly, setShowBatchmatesOnly] = useState(false);
   const [batchmates, setBatchmates] = useState([]);
+  const [currentUserBatchYear, setCurrentUserBatchYear] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState([]);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -19,39 +20,63 @@ const Batchmates = () => {
   const [messageContent, setMessageContent] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
 
-  // Load all alumni (not just same batch)
+  // Load all alumni and current user info
   useEffect(() => {
     const loadBatchmates = async () => {
       try {
         setLoading(true);
-        if (!user?.id) return; // Just check if user exists
+        if (!user?.id) return;
         
-        // Load ALL alumni regardless of batch year
+        // Load current user's batch year
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('batch_year')
+          .eq('id', user.id)
+          .single();
+          
+        if (userError) console.error('Error loading user batch year:', userError);
+        setCurrentUserBatchYear(userData?.batch_year);
+        
+        console.log('🔍 Loading alumni data...');
+        
+        // Load ALL alumni from users table
         const { data, error } = await supabase
           .from('users')
-          .select(`
-            id, first_name, last_name, course, email,
-            current_job, company, location, profile_picture,
-            last_login_at, created_at, batch_year
-          `)
+          .select('*')
           .eq('is_verified', true)
-          .neq('id', user.id) // Exclude current user
-          .order('batch_year', { ascending: false }); // Order by batch year
+          .neq('id', user.id)
+          .order('created_at', { ascending: false });
           
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Error loading alumni:', error);
+          throw error;
+        }
         
-        setBatchmates((data || []).map(u => ({
-          id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-          course: u.course || 'Course not specified',
-          location: u.location || 'Location not specified',
-          currentJob: u.current_job || 'Job not specified',
-          company: u.company || '',
-          lastActive: u.last_login_at ? formatLastActive(u.last_login_at) : 'Never logged in',
-          avatar: u.profile_picture || '/default-avatar.png',
-          email: u.email,
-          batchYear: u.batch_year || 'Not specified'
-        })));
+        console.log('📊 Raw alumni data from database:', data);
+        
+        setBatchmates((data || []).map(u => {
+          console.log('Processing user:', {
+            name: `${u.first_name} ${u.last_name}`,
+            course: u.course,
+            batch_year: u.batch_year,
+            current_job: u.current_job,
+            company: u.company,
+            location: u.location
+          });
+          
+          return {
+            id: u.id,
+            name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'No name',
+            course: u.course || 'Course not specified',
+            location: u.location || 'Location not specified',
+            currentJob: u.current_job || 'Job not specified',
+            company: u.company || '',
+            lastActive: u.last_login_at ? formatLastActive(u.last_login_at) : 'Never logged in',
+            avatar: u.profile_picture || '/default-avatar.png',
+            email: u.email,
+            batchYear: u.batch_year || 'Not specified'
+          };
+        }));
       } catch (error) {
         console.error('Error loading batchmates:', error);
         toast.error('Failed to load batchmates');
@@ -230,7 +255,8 @@ const Batchmates = () => {
       (batchmate.company || '').toLowerCase().includes(term) ||
       (batchmate.batchYear || '').toString().includes(term);
     const matchesCourse = selectedCourse === 'All' || batchmate.course === selectedCourse;
-    return matchesSearch && matchesCourse;
+    const matchesBatchYear = !showBatchmatesOnly || batchmate.batchYear === currentUserBatchYear;
+    return matchesSearch && matchesCourse && matchesBatchYear;
   });
 
   // Show loading state
@@ -299,7 +325,13 @@ const Batchmates = () => {
                   <button className="toggle-btn" onClick={() => setViewMode('list')} aria-pressed={viewMode==='list'}>List</button>
                 </div>
                 <div className="course-chips">
-                  {['All', ...Array.from(new Set(batchmates.map(m => m.course).filter(Boolean)))].map(c => (
+                  <button 
+                    className={`chip ${showBatchmatesOnly?'active':''}`} 
+                    onClick={()=>setShowBatchmatesOnly(!showBatchmatesOnly)}
+                  >
+                    Batchmates
+                  </button>
+                  {['All', 'BS Computer Science', 'BS Information Technology', 'BS Information Systems'].map(c => (
                     <button key={c} className={`chip ${selectedCourse===c?'active':''}`} onClick={()=>setSelectedCourse(c)}>{c}</button>
                   ))}
                 </div>

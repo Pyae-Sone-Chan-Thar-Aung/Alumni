@@ -4,6 +4,7 @@ import { supabase } from '../config/supabaseClient';
 import { FaUsers, FaUserCheck, FaNewspaper, FaBriefcase, FaChartBar, FaClipboardList, FaUserTimes, FaClock, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaEye, FaImage, FaPlus, FaEdit, FaTimes, FaUserPlus, FaGraduationCap, FaBuilding, FaDownload, FaLink, FaEnvelope, FaUser } from 'react-icons/fa';
 import './AdminDashboard.css';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 
 // Charts
 import { Bar, Doughnut, Pie } from 'react-chartjs-2';
@@ -263,43 +264,77 @@ const AdminDashboard = () => {
     setLoading(false);
   };
 
-  // Export users as CSV (id, name, email, role, status, graduation_year)
+  // Export users as Excel with phone and address
   const exportUsersCSV = async () => {
     try {
+      toast.info('Preparing export data...');
+
       const [{ data: users }, { data: profiles }] = await Promise.all([
-        supabase.from('users').select('id, email, first_name, last_name, role, approval_status, registration_date'),
-        supabase.from('user_profiles').select('user_id, graduation_year, course, country')
+        supabase.from('users').select('*').order('last_name', { ascending: true }),
+        supabase.from('user_profiles').select('*')
       ]);
+
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-      const rows = (users || []).map(u => {
+      
+      const excelData = (users || []).map((u, index) => {
         const p = profileMap.get(u.id) || {};
         return {
-          id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-          email: u.email || '',
-          role: u.role || 'alumni',
-          approval_status: u.approval_status || '',
-          graduation_year: p.graduation_year || '',
-          course: p.course || '',
-          country: p.country || '',
-          registered_at: u.registration_date || ''
+          'No.': index + 1,
+          'ID': u.id,
+          'First Name': u.first_name || '',
+          'Last Name': u.last_name || '',
+          'Email': u.email || '',
+          'Phone Number': p.phone || u.phone || '',
+          'Address': p.address || u.address || '',
+          'City': p.city || '',
+          'Country': p.country || '',
+          'Role': u.role || 'alumni',
+          'Status': u.approval_status || '',
+          'Course': p.course || u.course || '',
+          'Graduation Year': p.graduation_year || u.graduation_year || '',
+          'Batch Year': p.batch_year || '',
+          'Current Job': p.current_job || '',
+          'Company': p.company || '',
+          'Registered At': u.registration_date || u.created_at ? new Date(u.registration_date || u.created_at).toLocaleDateString() : ''
         };
       });
-      const headers = Object.keys(rows[0] || { id: '', name: '', email: '', role: '', approval_status: '', graduation_year: '', course: '', country: '', registered_at: '' });
-      const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `uic_users_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success('Users CSV exported');
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 5 },  // No.
+        { wch: 35 }, // ID
+        { wch: 15 }, // First Name
+        { wch: 15 }, // Last Name
+        { wch: 30 }, // Email
+        { wch: 15 }, // Phone Number
+        { wch: 40 }, // Address
+        { wch: 15 }, // City
+        { wch: 15 }, // Country
+        { wch: 10 }, // Role
+        { wch: 12 }, // Status
+        { wch: 25 }, // Course
+        { wch: 15 }, // Graduation Year
+        { wch: 15 }, // Batch Year
+        { wch: 25 }, // Current Job
+        { wch: 25 }, // Company
+        { wch: 15 }  // Registered At
+      ];
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+
+      // Generate Excel file and trigger download
+      const fileName = `uic_users_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      toast.success('Users data exported successfully!');
     } catch (e) {
       console.error('Export failed', e);
-      toast.error('Failed to export users CSV');
+      toast.error('Failed to export users data');
     }
   };
 
@@ -749,7 +784,7 @@ const AdminDashboard = () => {
                 <div className="action-icon export"><FaDownload /></div>
                 <div className="action-text">
                   <div className="action-title">Export Users</div>
-                  <div className="action-sub">Download CSV report</div>
+                  <div className="action-sub">Download Excel report</div>
                 </div>
               </button>
 

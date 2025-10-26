@@ -637,7 +637,16 @@ const Register = () => {
             <div className="form-section">
               <label className="checkbox-label">
                 <input type="checkbox" required />
-                <span>I agree to the terms and conditions and privacy policy</span>
+                <span>
+                  I agree to the{' '}
+                  <Link to="/terms-and-conditions" className="terms-link">
+                    terms and conditions
+                  </Link>
+                  {' '}and{' '}
+                  <Link to="/privacy-policy" className="privacy-link">
+                    privacy policy
+                  </Link>
+                </span>
               </label>
             </div>
 

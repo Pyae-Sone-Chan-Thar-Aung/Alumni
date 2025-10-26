@@ -1,0 +1,153 @@
+/* Terms and Conditions Page Styles */
+.terms-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 20px;
+}
+
+.terms-header {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8B0000;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 20px;
+  transition: color 0.3s ease;
+}
+
+.back-link:hover {
+  color: #660000;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-icon {
+  font-size: 48px;
+  color: #8B0000;
+}
+
+.header-content h1 {
+  color: #8B0000;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.header-content p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+.terms-content {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+}
+
+.terms-section {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.terms-section:last-child {
+  border-bottom: none;
+}
+
+.terms-section h2 {
+  color: #8B0000;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.terms-section p {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.terms-section ul {
+  margin: 15px 0;
+  padding-left: 20px;
+}
+
+.terms-section li {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.contact-info {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.contact-info p {
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.contact-info a {
+  color: #8B0000;
+  text-decoration: none;
+}
+
+.contact-info a:hover {
+  text-decoration: underline;
+}
+
+.terms-footer {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 30px;
+  text-align: center;
+}
+
+.terms-footer p {
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .terms-container {
+    padding: 10px;
+  }
+  
+  .terms-header,
+  .terms-content {
+    padding: 20px;
+  }
+  
+  .header-content h1 {
+    font-size: 24px;
+  }
+  
+  .header-icon {
+    font-size: 36px;
+  }
+}

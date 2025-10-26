@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../config/supabaseClient';
 import { FaUser, FaBriefcase, FaNewspaper, FaUsers, FaCalendarAlt, FaBell, FaEdit } from 'react-icons/fa';
 import './AlumniDashboard.css';
 
@@ -7,62 +8,168 @@ const AlumniDashboard = () => {
   const { user } = useAuth();
   const [recentNews, setRecentNews] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalAlumni: 25000,
-    batchmates: 150,
-    jobOpportunities: 25,
-    eventsThisMonth: 3
+    totalAlumni: 0,
+    batchmates: 0,
+    jobOpportunities: 0,
+    eventsThisMonth: 0
   });
 
   useEffect(() => {
-    // Simulate fetching data
-    setRecentNews([
-      {
-        id: 1,
-        title: "Alumni Homecoming 2024 Registration",
-        date: "2024-01-15",
-        category: "Event"
-      },
-      {
-        id: 2,
-        title: "New Job Opportunities in Tech",
-        date: "2024-01-14",
-        category: "Career"
-      },
-      {
-        id: 3,
-        title: "Professional Development Workshop",
-        date: "2024-01-13",
-        category: "Professional Development"
-      }
-    ]);
+    fetchDashboardData();
+  }, [user]);
 
-    setRecentJobs([
-      {
-        id: 1,
-        title: "Senior Software Engineer",
-        company: "TechCorp Inc.",
-        field: "Technology",
-        location: "Davao City"
-      },
-      {
-        id: 2,
-        title: "Marketing Manager",
-        company: "Global Solutions",
-        field: "Business",
-        location: "Manila"
-      },
-      {
-        id: 3,
-        title: "Nurse Practitioner",
-        company: "City Hospital",
-        field: "Medical",
-        location: "Cebu City"
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch user profile data
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      setUserProfile(profileData);
+
+      // Fetch total alumni count (approved users)
+      const { count: totalAlumni } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('approval_status', 'approved');
+
+      // Fetch batchmates (users with same graduation year/batch)
+      let batchmates = 0;
+      const batchYear = profileData?.batch_year || profileData?.graduation_year || user?.batch || user?.batch_year || user?.graduation_year;
+      if (batchYear) {
+        const { count: batchCount } = await supabase
+          .from('user_profiles')
+          .select('*', { count: 'exact', head: true })
+          .or(`batch_year.eq.${batchYear},graduation_year.eq.${batchYear}`);
+        batchmates = batchCount || 0;
       }
-    ]);
-  }, []);
+
+      // Fetch active job opportunities count
+      const { count: jobCount } = await supabase
+        .from('job_opportunities')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch recent news (last 3 published articles)
+      const { data: newsData } = await supabase
+        .from('news')
+        .select('id, title, published_at, category')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(3);
+
+      // Fetch recent job opportunities (last 3)
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('job_opportunities')
+        .select('id, title, company, field, location')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (jobsError) {
+        console.error('Error fetching jobs:', jobsError);
+      }
+
+      // Fetch events this month (if you have an events table)
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+
+      // For now, we'll use news with 'Event' category as events
+      const { count: eventsCount } = await supabase
+        .from('news')
+        .select('*', { count: 'exact', head: true })
+        .eq('category', 'Event')
+        .eq('is_published', true)
+        .gte('published_at', startOfMonth)
+        .lte('published_at', endOfMonth);
+
+      // Update stats
+      setStats({
+        totalAlumni: totalAlumni || 0,
+        batchmates: batchmates || 0,
+        jobOpportunities: jobCount || 0,
+        eventsThisMonth: eventsCount || 0
+      });
+
+      // Format and set news data
+      if (newsData) {
+        setRecentNews(newsData.map(news => ({
+          id: news.id,
+          title: news.title,
+          date: news.published_at,
+          category: news.category || 'General'
+        })));
+      }
+
+      // Format and set jobs data
+      console.log('📋 Jobs data fetched:', jobsData);
+      if (jobsData && jobsData.length > 0) {
+        setRecentJobs(jobsData.map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          field: job.field,
+          location: job.location
+        })));
+      } else {
+        setRecentJobs([]);
+      }
+
+      // Fetch upcoming events (news with 'Event' category)
+      // Note: We fetch all published events and show the most recent ones
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('news')
+        .select('id, title, published_at, category, content')
+        .eq('category', 'Event')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(3);
+
+      if (eventsError) {
+        console.error('Error fetching events:', eventsError);
+      }
+
+      // Format and set events data
+      console.log('📅 Events data fetched:', eventsData);
+      if (eventsData && eventsData.length > 0) {
+        setUpcomingEvents(eventsData.map(event => ({
+          id: event.id,
+          title: event.title,
+          date: event.published_at,
+          description: event.content?.substring(0, 100) || 'Event details'
+        })));
+      } else {
+        setUpcomingEvents([]);
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const displayName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.name || user?.email;
+
+  if (loading) {
+    return (
+      <div className="alumni-dashboard">
+        <div className="container">
+          <div className="loading-container" style={{ textAlign: 'center', padding: '50px' }}>
+            <div className="loading-spinner"></div>
+            <p>Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="alumni-dashboard">
@@ -148,7 +255,7 @@ const AlumniDashboard = () => {
                         <span className="news-date">{new Date(news.date).toLocaleDateString()}</span>
                       </p>
                     </div>
-                    <a href={`/news/${news.id}`} className="read-more">Read →</a>
+                    <a href={`/news/`} className="read-more">Read →</a>
                   </div>
                 ))}
               </div>
@@ -160,19 +267,23 @@ const AlumniDashboard = () => {
                 <a href="/job-opportunities" className="view-all">View All</a>
               </div>
               <div className="jobs-list">
-                {recentJobs.map(job => (
-                  <div key={job.id} className="job-item">
-                    <div className="job-info">
-                      <h4>{job.title}</h4>
-                      <p className="job-company">{job.company}</p>
-                      <p className="job-meta">
-                        <span className="job-field">{job.field}</span>
-                        <span className="job-location">{job.location}</span>
-                      </p>
+                {recentJobs.length > 0 ? (
+                  recentJobs.map(job => (
+                    <div key={job.id} className="job-item">
+                      <div className="job-info">
+                        <h4>{job.title}</h4>
+                        <p className="job-company">{job.company}</p>
+                        <p className="job-meta">
+                          <span className="job-field">{job.field}</span>
+                          <span className="job-location">{job.location}</span>
+                        </p>
+                      </div>
+                      <a href={`/job-opportunities/${job.id}`} className="view-job">View →</a>
                     </div>
-                    <a href={`/job-opportunities/${job.id}`} className="view-job">View →</a>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No job opportunities available at the moment.</p>
+                )}
               </div>
             </div>
           </div>
@@ -199,35 +310,36 @@ const AlumniDashboard = () => {
             <div className="sidebar-section">
               <h3>Your Information</h3>
               <div className="user-info">
-                <p><strong>Batch:</strong> {user?.batch || user?.batch_year || 'N/A'}</p>
-                <p><strong>Course:</strong> {user?.course || 'N/A'}</p>
-                <p><strong>Status:</strong> <span className="status-approved">Approved</span></p>
+                <p><strong>Batch:</strong> {userProfile?.batch_year || userProfile?.graduation_year || user?.batch || user?.batch_year || 'N/A'}</p>
+                <p><strong>Course:</strong> {userProfile?.course || user?.course || 'N/A'}</p>
+                <p><strong>Status:</strong> <span className="status-approved">{user?.approval_status === 'approved' ? 'Approved' : user?.approval_status || 'Pending'}</span></p>
               </div>
             </div>
 
             <div className="sidebar-section">
               <h3>Upcoming Events</h3>
               <div className="events-list">
-                <div className="event-item">
-                  <div className="event-date">
-                    <span className="day">15</span>
-                    <span className="month">MAR</span>
-                  </div>
-                  <div className="event-info">
-                    <h4>Alumni Homecoming 2024</h4>
-                    <p>Registration Deadline</p>
-                  </div>
-                </div>
-                <div className="event-item">
-                  <div className="event-date">
-                    <span className="day">20</span>
-                    <span className="month">APR</span>
-                  </div>
-                  <div className="event-info">
-                    <h4>Career Fair 2024</h4>
-                    <p>Professional Networking</p>
-                  </div>
-                </div>
+                {upcomingEvents.length > 0 ? (
+                  upcomingEvents.map(event => {
+                    const eventDate = new Date(event.date);
+                    const day = eventDate.getDate();
+                    const month = eventDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                    return (
+                      <div key={event.id} className="event-item">
+                        <div className="event-date">
+                          <span className="day">{day}</span>
+                          <span className="month">{month}</span>
+                        </div>
+                        <div className="event-info">
+                          <h4>{event.title}</h4>
+                          <p>{event.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p style={{ textAlign: 'center', padding: '20px', color: '#666', fontSize: '14px' }}>No upcoming events scheduled.</p>
+                )}
               </div>
             </div>
           </div>

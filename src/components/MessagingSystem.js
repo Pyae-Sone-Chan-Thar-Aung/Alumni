@@ -498,29 +498,23 @@ const MessagingSystem = () => {
   return (
     <div className="messaging-system">
       <div className="messaging-header">
-        <div className="header-content">
-          <h2>Messages</h2>
-
-        </div>
-        <div className="header-actions">
-          <div className="search-box">
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search messages, connections, or alumni..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="clear-search"
-                onClick={() => setSearchTerm('')}
-                title="Clear search"
-              >
-                <FaTimes />
-              </button>
-            )}
-          </div>
+        <div className="search-box">
+          <FaSearch />
+          <input
+            type="text"
+            placeholder="Search messages, connections, or alumni..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              className="clear-search"
+              onClick={() => setSearchTerm('')}
+              title="Clear search"
+            >
+              <FaTimes />
+            </button>
+          )}
         </div>
       </div>
 

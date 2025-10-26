@@ -4,6 +4,7 @@ import { FaChartBar, FaUsers, FaGraduationCap, FaBriefcase, FaCalendarAlt, FaDow
 import { Bar, Pie, Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement } from 'chart.js';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 import './AdminAnalytics.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
@@ -168,16 +169,70 @@ const AdminAnalytics = () => {
     }
   };
 
-  const exportData = () => {
-    const dataStr = JSON.stringify(analytics, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `alumni-analytics-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success('Analytics data exported successfully!');
+  const exportData = async () => {
+    try {
+      toast.info('Preparing export data...');
+
+      // Fetch alumni data with their addresses and phone numbers
+      const { data: alumniData, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('last_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching alumni data:', error);
+        toast.error('Failed to fetch alumni data');
+        return;
+      }
+
+      // Prepare data for Excel export
+      const excelData = alumniData.map((alumni, index) => ({
+        'No.': index + 1,
+        'First Name': alumni.first_name || '',
+        'Last Name': alumni.last_name || '',
+        'Email': alumni.email || '',
+        'Phone Number': alumni.phone || '',
+        'Address': alumni.address || '',
+        'Course': alumni.course || '',
+        'Graduation Year': alumni.graduation_year || '',
+        'Student ID': alumni.student_id || '',
+        'Status': alumni.approval_status || 'pending',
+        'Role': alumni.role || 'alumni',
+        'Created At': alumni.created_at ? new Date(alumni.created_at).toLocaleDateString() : ''
+      }));
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 5 },  // No.
+        { wch: 15 }, // First Name
+        { wch: 15 }, // Last Name
+        { wch: 30 }, // Email
+        { wch: 15 }, // Phone Number
+        { wch: 40 }, // Address
+        { wch: 20 }, // Course
+        { wch: 15 }, // Graduation Year
+        { wch: 15 }, // Student ID
+        { wch: 12 }, // Status
+        { wch: 10 }, // Role
+        { wch: 15 }  // Created At
+      ];
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Alumni Data');
+
+      // Generate Excel file and trigger download
+      const fileName = `alumni-data-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      toast.success('Alumni data exported successfully!');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
+    }
   };
 
   // Chart configurations
@@ -347,10 +402,10 @@ const AdminAnalytics = () => {
               <FaUsers />
             </div>
             <div className="card-content">
-              <h3>{analytics.overview.totalAlumni.toLocaleString()}</h3>
               <p>Total Alumni</p>
+              <h3>{analytics.overview.totalAlumni.toLocaleString()}</h3>
               <span className="card-trend positive">
-                {analytics.overview.activeUsers} active
+                {analytics.overview.activeUsers} Active
               </span>
             </div>
           </div>
@@ -360,10 +415,10 @@ const AdminAnalytics = () => {
               <FaGraduationCap />
             </div>
             <div className="card-content">
-              <h3>{analytics.overview.tracerResponses.toLocaleString()}</h3>
               <p>Tracer Study Responses</p>
+              <h3>{analytics.overview.tracerResponses.toLocaleString()}</h3>
               <span className="card-trend neutral">
-                {((analytics.overview.tracerResponses / analytics.overview.totalAlumni) * 100).toFixed(1)}% response rate
+                {((analytics.overview.tracerResponses / analytics.overview.totalAlumni) * 100).toFixed(1)}% Rate
               </span>
             </div>
           </div>
@@ -373,11 +428,11 @@ const AdminAnalytics = () => {
               <FaBriefcase />
             </div>
             <div className="card-content">
-              <h3>{analytics.employment.employed + analytics.employment.selfEmployed}</h3>
               <p>Currently Employed</p>
+              <h3>{analytics.employment.employed + analytics.employment.selfEmployed}</h3>
               <span className="card-trend positive">
                 {(((analytics.employment.employed + analytics.employment.selfEmployed) /
-                  (analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}% employment rate
+                  (analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}% Rate
               </span>
             </div>
           </div>
@@ -387,10 +442,10 @@ const AdminAnalytics = () => {
               <FaEye />
             </div>
             <div className="card-content">
-              <h3>{analytics.engagement.profileCompleteness.toFixed(1)}%</h3>
               <p>Profile Completeness</p>
+              <h3>{analytics.engagement.profileCompleteness.toFixed(1)}%</h3>
               <span className="card-trend neutral">
-                Average completion
+                Avg Completion
               </span>
             </div>
           </div>

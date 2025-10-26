@@ -57,6 +57,26 @@
   font-size: 0.95rem;
 }
 
+.footer-section {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Specifically target the contact information container */
+.footer .footer-section .contact-info,
+.footer-content .footer-section:nth-child(3),
+.footer-content > div:has(.contact-info) {
+  background: transparent !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
 .footer-section h4 {
   color: #ffffff;
   margin-bottom: 1rem;
@@ -161,17 +181,26 @@
   width: 10px;
 }
 
+.contact-info {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .contact-info p {
-  color: rgba(255, 255, 255, 0.9);
+  color: #ffffff !important;
   text-decoration: none;
   transition: all 0.3s ease;
   padding: 0.3rem 0;
-  display: inline-block;
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.contact-info p svg {
+  color: #ffffff !important;
 }
 
 .footer-bottom {
@@ -230,4 +259,25 @@
   .footer-links a:hover {
     transform: none;
   }
-} 
+}
+
+/* ULTIMATE OVERRIDE - Remove all white backgrounds from footer sections */
+.footer * {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.footer .footer-section,
+.footer .contact-info,
+.footer .contact-info *,
+.footer-section:has(.contact-info) {
+  background: none !important;
+  background-color: transparent !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}

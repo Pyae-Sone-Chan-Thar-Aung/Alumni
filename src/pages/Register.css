@@ -128,6 +128,20 @@
   margin: 0;
 }
 
+.terms-link,
+.privacy-link {
+  color: #8B0000;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.terms-link:hover,
+.privacy-link:hover {
+  color: #660000;
+  text-decoration: none;
+}
+
 /* Image Upload Styles */
 .image-upload-section {
   display: flex;

@@ -501,21 +501,24 @@ const AdminAnalytics = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          {analytics.trends.registrationTrends.length > 0 && (
+        {/* Registration Trends - Separate Section */}
+        {analytics.trends.registrationTrends.length > 0 && (
+          <div className="charts-section">
             <div className="chart-row">
               <div className="chart-container full-width">
                 <div className="chart-header">
                   <h3>Registration Trends</h3>
                   <p>New alumni registrations over time</p>
                 </div>
-                <div className="chart-wrapper">
+                <div className="chart-wrapper" style={{ height: 320 }}>
                   <Line data={registrationTrendData} options={chartOptions} />
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Detailed Statistics */}
         <div className="detailed-stats">

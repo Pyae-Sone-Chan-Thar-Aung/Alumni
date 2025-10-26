@@ -66,9 +66,6 @@ const Navbar = () => {
                 <Link to="/login" className="auth-btn login-btn">
                   LOGIN
                 </Link>
-                <Link to="/register" className="auth-btn register-btn">
-                  Register
-                </Link>
               </>
             ) : (
               <div className="nav-user">
@@ -108,6 +105,11 @@ const Navbar = () => {
               <NavLink to="/gallery" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
                 Gallery
               </NavLink>
+              {!isAuthenticated && (
+                <NavLink to="/register" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
+                  Register
+                </NavLink>
+              )}
 
               {isAuthenticated && (
                 <>

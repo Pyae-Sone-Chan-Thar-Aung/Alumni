@@ -17,6 +17,7 @@ const AdminJobs = () => {
     title: '',
     company: '',
     location: '',
+    job_type: 'Full-time',
     salary_range: '',
     description: '',
     requirements: '',
@@ -73,6 +74,7 @@ const AdminJobs = () => {
           title: formData.title,
           company: formData.company,
           location: formData.location,
+          job_type: formData.job_type,
           salary_range: formData.salary_range,
           description: formData.description,
           requirements: formData.requirements,
@@ -107,6 +109,7 @@ const AdminJobs = () => {
       title: job.title || '',
       company: job.company || '',
       location: job.location || '',
+      job_type: job.job_type || 'Full-time',
       salary_range: job.salary_range || '',
       description: job.description || '',
       requirements: job.requirements || '',
@@ -156,6 +159,7 @@ const AdminJobs = () => {
       title: '',
       company: '',
       location: '',
+      job_type: 'Full-time',
       salary_range: '',
       description: '',
       requirements: '',
@@ -382,17 +386,34 @@ const AdminJobs = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="location">Location *</label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g. Davao City, Philippines"
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="location">Location *</label>
+                    <input
+                      type="text"
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g. Davao City, Philippines"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="job_type">Employment Type *</label>
+                    <select
+                      id="job_type"
+                      name="job_type"
+                      value={formData.job_type}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group">

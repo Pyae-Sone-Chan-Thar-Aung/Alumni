@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabaseClient';
-import { FaUser, FaBriefcase, FaNewspaper, FaUsers, FaCalendarAlt, FaBell, FaEdit } from 'react-icons/fa';
+import { FaUser, FaBriefcase, FaNewspaper, FaUsers, FaCalendarAlt, FaBell, FaEdit, FaHeart } from 'react-icons/fa';
 import './AlumniDashboard.css';
 
 const AlumniDashboard = () => {
   const { user } = useAuth();
   const [recentNews, setRecentNews] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
+  const [savedJobs, setSavedJobs] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,12 +69,25 @@ const AlumniDashboard = () => {
       // Fetch recent job opportunities (last 3)
       const { data: jobsData, error: jobsError } = await supabase
         .from('job_opportunities')
-        .select('id, title, company, field, location')
+        .select('id, title, company, job_type, location')
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(3);
 
       if (jobsError) {
         console.error('Error fetching jobs:', jobsError);
+      }
+
+      // Fetch saved jobs for the user
+      const { data: savedJobsData, error: savedJobsError } = await supabase
+        .from('saved_jobs')
+        .select('job_id, job_opportunities(id, title, company, location, job_type)')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (savedJobsError) {
+        console.error('Error fetching saved jobs:', savedJobsError);
       }
 
       // Fetch events this month (if you have an events table)
@@ -115,11 +129,28 @@ const AlumniDashboard = () => {
           id: job.id,
           title: job.title,
           company: job.company,
-          field: job.field,
+          field: job.job_type || 'Full-time',
           location: job.location
         })));
       } else {
         setRecentJobs([]);
+      }
+
+      // Format and set saved jobs data
+      console.log('💾 Saved jobs data fetched:', savedJobsData);
+      if (savedJobsData && savedJobsData.length > 0) {
+        setSavedJobs(savedJobsData
+          .filter(item => item.job_opportunities)
+          .map(item => ({
+            id: item.job_opportunities.id,
+            title: item.job_opportunities.title,
+            company: item.job_opportunities.company,
+            location: item.job_opportunities.location,
+            type: item.job_opportunities.job_type
+          }))
+        );
+      } else {
+        setSavedJobs([]);
       }
 
       // Fetch upcoming events (news with 'Event' category)
@@ -283,6 +314,32 @@ const AlumniDashboard = () => {
                   ))
                 ) : (
                   <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No job opportunities available at the moment.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="content-section">
+              <div className="section-header">
+                <h2><FaHeart style={{ color: '#e74c3c', marginRight: '8px' }} />Saved Jobs</h2>
+                <a href="/job-opportunities" className="view-all">View All</a>
+              </div>
+              <div className="jobs-list">
+                {savedJobs.length > 0 ? (
+                  savedJobs.map(job => (
+                    <div key={job.id} className="job-item">
+                      <div className="job-info">
+                        <h4>{job.title}</h4>
+                        <p className="job-company">{job.company}</p>
+                        <p className="job-meta">
+                          <span className="job-field">{job.type}</span>
+                          <span className="job-location">{job.location}</span>
+                        </p>
+                      </div>
+                      <a href="/job-opportunities" className="view-job">View →</a>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>You haven't saved any jobs yet. Browse job opportunities and save the ones you're interested in!</p>
                 )}
               </div>
             </div>

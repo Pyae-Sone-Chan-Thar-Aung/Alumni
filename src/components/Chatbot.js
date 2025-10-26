@@ -1,24 +1,62 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaComments, FaTimes, FaPaperPlane, FaRobot, FaLightbulb, FaSpinner } from 'react-icons/fa';
-import ollamaService from '../services/ollamaService';
+import { FaTimes, FaRobot } from 'react-icons/fa';
 import './Chatbot.css';
 
-const Chatbot = ({ isOpen, onToggle, tracerData = null }) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Hello! I'm your CCS Alumni AI assistant powered by Ollama. I can help you analyze tracer study data, answer questions about graduate outcomes, and provide insights about alumni careers. How can I help you today?",
-      sender: 'bot',
-      timestamp: new Date()
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [currentModel, setCurrentModel] = useState('llama2');
-  const [showSuggestions, setShowSuggestions] = useState(true);
+const Chatbot = ({ isOpen, onToggle }) => {
+  const [conversationState, setConversationState] = useState('welcome');
+  const [messages, setMessages] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef(null);
+
+  // Conversation flow configuration
+  const conversationFlows = {
+    welcome: {
+      message: "Hi. My name is Jaguar! I'm the College for Computer Studies (CCS)'s friendly virtual assistant. I'm happy to answer your career-related questions. To start, tell me about yourself!",
+      options: [
+        { id: 'student', label: "I'm a student" },
+        { id: 'alumni', label: "I'm an alumnus/alumna" },
+        { id: 'employer', label: "I'm an employer" },
+        { id: 'staff', label: "I'm a staff" }
+      ]
+    },
+    student: {
+      message: "Great! As a CCS student, I can help you with:",
+      options: [
+        { id: 'navigation', label: 'System Navigation' },
+        { id: 'features', label: 'System Features' },
+        { id: 'alumni_insights', label: 'Alumni Career Insights' },
+        { id: 'go_back', label: 'Go back' }
+      ]
+    },
+    alumni: {
+      message: "Welcome, alumnus/alumna! How can I assist you today?",
+      options: [
+        { id: 'profile_help', label: 'Update My Profile' },
+        { id: 'networking', label: 'Connect with Batchmates' },
+        { id: 'job_board', label: 'Job Opportunities' },
+        { id: 'events', label: 'Upcoming Events' },
+        { id: 'go_back', label: 'Go back' }
+      ]
+    },
+    employer: {
+      message: "Welcome! As an employer, I can help you with:",
+      options: [
+        { id: 'post_job', label: 'How to Post Jobs' },
+        { id: 'find_talent', label: 'Find CCS Graduates' },
+        { id: 'contact_admin', label: 'Contact Admin' },
+        { id: 'go_back', label: 'Go back' }
+      ]
+    },
+    staff: {
+      message: "Hello, staff member! How can I help you today?",
+      options: [
+        { id: 'admin_features', label: 'Admin Features' },
+        { id: 'reports', label: 'Generate Reports' },
+        { id: 'user_management', label: 'User Management' },
+        { id: 'go_back', label: 'Go back' }
+      ]
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,161 +66,258 @@ const Chatbot = ({ isOpen, onToggle, tracerData = null }) => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    checkOllamaConnection();
-  }, []);
-
-  const checkOllamaConnection = async () => {
-    const connected = await ollamaService.checkConnection();
-    setIsConnected(connected);
-    if (!connected) {
-      const errorMessage = {
-        id: Date.now(),
-        text: "⚠️ Ollama is not running. Please start Ollama service to enable AI responses. For now, I'll provide basic responses.",
-        sender: 'bot',
-        timestamp: new Date(),
-        isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    }
+  const initializeConversation = () => {
+    const welcomeMessage = {
+      id: Date.now(),
+      text: conversationFlows.welcome.message,
+      sender: 'bot',
+      timestamp: new Date(),
+      options: conversationFlows.welcome.options
+    };
+    setMessages([welcomeMessage]);
+    setConversationState('welcome');
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      initializeConversation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
+  const handleOptionClick = (optionId) => {
+    // Add user's selection to messages
     const userMessage = {
       id: Date.now(),
-      text: inputMessage,
+      text: conversationFlows[conversationState]?.options.find(opt => opt.id === optionId)?.label || optionId,
       sender: 'user',
       timestamp: new Date()
     };
-
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputMessage;
-    setInputMessage('');
-    setIsTyping(true);
-    setShowSuggestions(false);
 
-    try {
-      let botResponse;
-      
-      if (isConnected) {
-        // Use Ollama for AI responses
-        const response = await ollamaService.sendMessage(currentInput, tracerData, {
-          temperature: 0.7,
-          top_p: 0.9
-        });
-        
-        if (response.success) {
-          botResponse = response.response;
-        } else {
-          botResponse = `❌ AI Error: ${response.error}\n\nFalling back to basic response:\n${getBasicResponse(currentInput)}`;
-        }
-      } else {
-        // Fallback to basic responses
-        botResponse = getBasicResponse(currentInput);
-      }
+    // Handle special cases
+    if (optionId === 'go_back') {
+      initializeConversation();
+      return;
+    }
 
-      const botMessage = {
+    // Handle user type selection
+    if (['student', 'alumni', 'employer', 'staff'].includes(optionId)) {
+      setConversationState(optionId);
+
+      const responseMessage = {
         id: Date.now() + 1,
-        text: botResponse,
+        text: conversationFlows[optionId].message,
         sender: 'bot',
         timestamp: new Date(),
-        model: isConnected ? currentModel : 'basic'
+        options: conversationFlows[optionId].options
       };
-      
-      setMessages(prev => [...prev, botMessage]);
+      setMessages(prev => [...prev, responseMessage]);
       if (!isOpen) setUnreadCount(c => c + 1);
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        text: `❌ Error: ${error.message}\n\nFalling back to basic response:\n${getBasicResponse(currentInput)}`,
-        sender: 'bot',
-        timestamp: new Date(),
-        isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
+      return;
     }
+
+    // Handle topic-specific responses
+    const response = getTopicResponse(optionId);
+    const botMessage = {
+      id: Date.now() + 1,
+      text: response.text,
+      sender: 'bot',
+      timestamp: new Date(),
+      options: response.options
+    };
+
+    setMessages(prev => [...prev, botMessage]);
+    if (!isOpen) setUnreadCount(c => c + 1);
   };
 
-  const getBasicResponse = (message) => {
-    const lowerMessage = message.toLowerCase();
-    
-    // If we have tracer study data, provide data-driven responses
-    if (tracerData && tracerData.length > 0) {
-      const responses = tracerData;
-      const totalResponses = responses.length;
-      const employed = responses.filter(r => 
-        r.employment_status && 
-        (r.employment_status.includes('Employed') || r.employment_status === 'Self-employed/Freelancer')
-      );
-      const employmentRate = Math.round((employed.length / totalResponses) * 100);
-      
-      if (lowerMessage.includes('employment') || lowerMessage.includes('job') || lowerMessage.includes('work')) {
-        return `Based on our tracer study data:\n\n📊 **Employment Statistics:**\n- Total Responses: ${totalResponses}\n- Employment Rate: ${employmentRate}%\n- Employed (Full-time): ${responses.filter(r => r.employment_status === 'Employed (Full-time)').length}\n- Employed (Part-time): ${responses.filter(r => r.employment_status === 'Employed (Part-time)').length}\n- Self-employed/Freelancer: ${responses.filter(r => r.employment_status === 'Self-employed/Freelancer').length}\n- Unemployed: ${responses.filter(r => r.employment_status === 'Unemployed').length}`;
+  const getTopicResponse = (topicId) => {
+    // Privacy protection is built into all responses
+    // Individual user data is never exposed through the chatbot
+
+    const responses = {
+      // Student responses
+      navigation: {
+        text: "🗺️ **System Navigation Help:**\n\n" +
+          "• **Home**: View announcements and system overview\n" +
+          "• **Alumni Directory**: Search and connect with graduates\n" +
+          "• **Job Board**: Browse career opportunities\n" +
+          "• **Events**: Upcoming alumni events and reunions\n" +
+          "• **Tracer Study**: View graduate employment outcomes\n" +
+          "• **Profile**: Update your personal information\n\n" +
+          "Use the navigation menu at the top to access these features.",
+        options: [
+          { id: 'features', label: 'Tell me about features' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      features: {
+        text: "✨ **CCS Alumni System Features:**\n\n" +
+          "📱 **Networking**: Connect with batchmates and alumni\n" +
+          "💼 **Job Board**: Find career opportunities posted by employers\n" +
+          "📊 **Tracer Study**: View employment statistics and outcomes\n" +
+          "📸 **Gallery**: Browse photos from CCS events\n" +
+          "💬 **Messaging**: Communicate with your batchmates\n" +
+          "🔔 **Notifications**: Stay updated on announcements\n\n" +
+          "All features are designed to help you stay connected with the CCS community!",
+        options: [
+          { id: 'alumni_insights', label: 'Show me alumni insights' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      alumni_insights: {
+        text: "📈 **Alumni Career Insights:**\n\n" +
+          "Our tracer study shows CCS graduates excel across various industries:\n\n" +
+          "• IT/Software Development\n" +
+          "• Data Science & Analytics\n" +
+          "• Cybersecurity\n" +
+          "• Digital Marketing\n" +
+          "• Entrepreneurship\n\n" +
+          "Visit the **Tracer Study** page for detailed statistics and employment trends. " +
+          "Note: Individual salary and personal data are kept confidential for privacy protection.",
+        options: [
+          { id: 'navigation', label: 'How to navigate' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+
+      // Alumni responses
+      profile_help: {
+        text: "👤 **Update Your Profile:**\n\n" +
+          "1. Click on your name/avatar in the top right\n" +
+          "2. Select 'Profile' from the dropdown\n" +
+          "3. Click 'Edit Profile' button\n" +
+          "4. Update your information (employment, location, etc.)\n" +
+          "5. Save changes\n\n" +
+          "Keep your profile updated so batchmates can find and connect with you!",
+        options: [
+          { id: 'networking', label: 'Connect with batchmates' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      networking: {
+        text: "🤝 **Connect with Batchmates:**\n\n" +
+          "• Go to **Alumni Directory** to search for classmates\n" +
+          "• Filter by graduation year, program, or location\n" +
+          "• View public profiles (private data is protected)\n" +
+          "• Send connection requests\n" +
+          "• Use **Messaging** to communicate\n\n" +
+          "Remember: Respect privacy - only contact information marked as public is visible.",
+        options: [
+          { id: 'job_board', label: 'Browse jobs' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      job_board: {
+        text: "💼 **Job Opportunities:**\n\n" +
+          "Access the **Job Board** to:\n" +
+          "• Browse current job openings\n" +
+          "• Filter by industry, location, or job type\n" +
+          "• Save jobs to your favorites\n" +
+          "• Apply directly through the system\n\n" +
+          "New opportunities are posted regularly by employers and the CCS admin team.",
+        options: [
+          { id: 'events', label: 'View events' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      events: {
+        text: "📅 **Upcoming Events:**\n\n" +
+          "Stay connected through:\n" +
+          "• Alumni homecoming events\n" +
+          "• Career fairs and networking sessions\n" +
+          "• Workshop and seminars\n" +
+          "• Virtual meetups\n\n" +
+          "Check the **Events** page for the latest schedule and RSVP information.",
+        options: [
+          { id: 'profile_help', label: 'Update my profile' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+
+      // Employer responses
+      post_job: {
+        text: "📝 **How to Post Jobs:**\n\n" +
+          "1. Contact the CCS admin team at admin@ccs.edu\n" +
+          "2. Provide job details (title, description, requirements)\n" +
+          "3. Admin will review and post your opportunity\n" +
+          "4. Qualified alumni can view and apply\n\n" +
+          "Your job posting will reach our network of skilled CCS graduates!",
+        options: [
+          { id: 'find_talent', label: 'Find CCS graduates' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      find_talent: {
+        text: "🎯 **Find CCS Graduates:**\n\n" +
+          "Work with our admin team to connect with talented alumni. " +
+          "We can help match your requirements with qualified candidates.\n\n" +
+          "Note: For privacy protection, direct access to alumni data is restricted. " +
+          "Contact admin@ccs.edu for recruitment assistance.",
+        options: [
+          { id: 'contact_admin', label: 'Contact admin' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      contact_admin: {
+        text: "📧 **Contact CCS Admin:**\n\n" +
+          "Email: admin@ccs.edu\n" +
+          "Phone: (123) 456-7890\n" +
+          "Office Hours: Mon-Fri, 9AM-5PM\n\n" +
+          "We're here to help with recruitment, partnerships, and collaborations!",
+        options: [
+          { id: 'post_job', label: 'Post a job' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+
+      // Staff responses
+      admin_features: {
+        text: "🔧 **Admin Features:**\n\n" +
+          "• **User Management**: Manage alumni accounts\n" +
+          "• **Content Moderation**: Review posts and reports\n" +
+          "• **Job Postings**: Approve and publish opportunities\n" +
+          "• **Analytics Dashboard**: View system statistics\n" +
+          "• **Event Management**: Create and manage events\n\n" +
+          "Access these features from the Admin Dashboard.",
+        options: [
+          { id: 'reports', label: 'Generate reports' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      reports: {
+        text: "📊 **Generate Reports:**\n\n" +
+          "Available reports:\n" +
+          "• Employment statistics\n" +
+          "• User engagement metrics\n" +
+          "• Tracer study results\n" +
+          "• Event attendance\n\n" +
+          "Go to **Admin Dashboard → Reports** to access reporting tools.",
+        options: [
+          { id: 'user_management', label: 'User management' },
+          { id: 'go_back', label: 'Go back' }
+        ]
+      },
+      user_management: {
+        text: "👥 **User Management:**\n\n" +
+          "• View all registered users\n" +
+          "• Verify alumni accounts\n" +
+          "• Manage permissions\n" +
+          "• Handle account issues\n\n" +
+          "⚠️ Remember to protect user privacy and follow data protection policies.",
+        options: [
+          { id: 'admin_features', label: 'View admin features' },
+          { id: 'go_back', label: 'Go back' }
+        ]
       }
-      
-      if (lowerMessage.includes('industry') || lowerMessage.includes('company') || lowerMessage.includes('sector')) {
-        const industries = responses.filter(r => r.industry && r.industry.trim()).map(r => r.industry);
-        const industryCount = {};
-        industries.forEach(industry => {
-          industryCount[industry] = (industryCount[industry] || 0) + 1;
-        });
-        const topIndustries = Object.entries(industryCount)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([name, count]) => `• ${name}: ${count} graduates`);
-        
-        return `🏢 **Top Industries for CCS Graduates:**\n\n${topIndustries.join('\n')}\n\nOur graduates work across ${Object.keys(industryCount).length} different industries, showing the versatility of CCS programs.`;
-      }
-      
-      if (lowerMessage.includes('salary') || lowerMessage.includes('income') || lowerMessage.includes('wage')) {
-        const salaryRanges = responses.filter(r => r.monthly_salary && r.monthly_salary.trim());
-        return `💰 **Salary Information:**\n\nWe have salary data from ${salaryRanges.length} graduates. Compensation varies by industry, experience, and position level. Common salary ranges include entry-level to senior positions across various sectors.`;
-      }
-      
-      if (lowerMessage.includes('program') || lowerMessage.includes('course') || lowerMessage.includes('curriculum')) {
-        const curriculumHelpful = responses.filter(r => r.curriculum_helpful === true).length;
-        const totalWithFeedback = responses.filter(r => r.curriculum_helpful !== null).length;
-        const helpfulPercentage = totalWithFeedback > 0 ? Math.round((curriculumHelpful / totalWithFeedback) * 100) : 0;
-        
-        return `🎓 **Program Effectiveness:**\n\n${curriculumHelpful} out of ${totalWithFeedback} graduates (${helpfulPercentage}%) found the curriculum helpful for their careers.\n\nOur programs prepare students for diverse career paths with practical skills and knowledge.`;
-      }
-      
-      if (lowerMessage.includes('year') || lowerMessage.includes('graduation') || lowerMessage.includes('class')) {
-        const years = responses.filter(r => r.graduation_year).map(r => r.graduation_year.toString());
-        const uniqueYears = [...new Set(years)].sort().reverse();
-        return `📅 **Graduation Years Represented:**\n\n${uniqueYears.slice(0, 8).join(', ')}\n\nWe have responses from graduates across ${uniqueYears.length} different graduation years.`;
-      }
-    }
-    
-    // Default responses when no data is available
-    if (lowerMessage.includes('employment') || lowerMessage.includes('job') || lowerMessage.includes('work')) {
-      return "I can provide detailed employment statistics when tracer study data is available. Please visit the Tracer Study section for comprehensive career outcome analysis.";
-    }
-    
-    if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
-      return "I'm here to help with questions about CCS alumni data, employment outcomes, and career insights. What specific information are you looking for?";
-    }
-    
-    return "I can help you with questions about CCS alumni employment outcomes, career paths, industry trends, and program effectiveness. What would you like to know?";
+    };
+
+    return responses[topicId] || {
+      text: "I can help you navigate the CCS Alumni system. What would you like to know?",
+      options: [{ id: 'go_back', label: 'Go back' }]
+    };
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setInputMessage(suggestion);
-    setShowSuggestions(false);
-  };
-
-  const suggestions = ollamaService.getPredefinedQuestions();
 
   const handleToggle = () => {
     if (!isOpen) setUnreadCount(0);
@@ -192,96 +327,58 @@ const Chatbot = ({ isOpen, onToggle, tracerData = null }) => {
   return (
     <>
       <button className="chatbot-toggle" onClick={handleToggle} aria-label={isOpen ? 'Close chat' : 'Open chat'}>
-        <FaComments />
+        <div className="chatbot-toggle-icon">
+          <FaRobot />
+        </div>
+        <span className="chatbot-toggle-text">Ask Jaguar</span>
         {unreadCount > 0 && <span className="chatbot-badge" aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>}
       </button>
-      
+
       {isOpen && (
         <div className="chatbot-container">
           <div className="chatbot-header">
             <div className="chatbot-title">
-              <FaRobot />
-              <span>CCS Alumni AI Assistant</span>
-              <div className="connection-status">
-                <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}></span>
-                <span className="status-text">{isConnected ? 'Ollama Connected' : 'Basic Mode'}</span>
-              </div>
+              <FaRobot className="chatbot-icon" />
+              <span>Ask Jaguar</span>
             </div>
             <button className="chatbot-close" onClick={handleToggle} aria-label="Close chat">
               <FaTimes />
             </button>
           </div>
-          
+
           <div className="chatbot-messages">
             {messages.map((message) => (
-              <div key={message.id} className={`message ${message.sender} ${message.isError ? 'error' : ''}`}>
-                <div className="message-content">
+              <div key={message.id} className={`message-bubble ${message.sender}`}>
+                <div className="message-text">
                   {message.text.split('\n').map((line, index) => (
-                    <p key={index}>{line}</p>
+                    <React.Fragment key={index}>
+                      {line}
+                      {index < message.text.split('\n').length - 1 && <br />}
+                    </React.Fragment>
                   ))}
                 </div>
-                <div className="message-meta">
-                  <span className="message-time">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {message.model && (
-                    <span className="message-model">via {message.model}</span>
-                  )}
-                </div>
+
+                {message.options && message.options.length > 0 && (
+                  <div className="message-options">
+                    {message.options.map((option) => (
+                      <button
+                        key={option.id}
+                        className="option-btn"
+                        onClick={() => handleOptionClick(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
-            {isTyping && (
-              <div className="message bot">
-                <div className="message-content">
-                  <div className="typing-indicator dots" role="status" aria-live="polite" aria-label="Assistant is typing">
-                    <span className="dot" />
-                    <span className="dot" />
-                    <span className="dot" />
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {showSuggestions && messages.length <= 2 && (
-              <div className="suggestions-container">
-                <div className="suggestions-header">
-                  <FaLightbulb />
-                  <span>Try asking:</span>
-                </div>
-                <div className="suggestions-grid">
-                  {suggestions.slice(0, 6).map((suggestion, index) => (
-                    <button
-                      key={index}
-                      className="suggestion-btn"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
+
             <div ref={messagesEndRef} />
           </div>
-          
-          <div className="chatbot-input">
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me about CCS alumni outcomes, employment rates, salaries, or career trends..."
-              disabled={isTyping}
-              rows={1}
-              style={{ resize: 'none', overflow: 'hidden' }}
-            />
-            <button 
-              onClick={handleSendMessage} 
-              disabled={isTyping || !inputMessage.trim()}
-              className={isTyping ? 'sending' : ''}
-            >
-              {isTyping ? <FaSpinner className="spinner" /> : <FaPaperPlane />}
-            </button>
+
+          <div className="chatbot-footer">
+            <span className="chatbot-footer-text">Type a Message</span>
           </div>
         </div>
       )}

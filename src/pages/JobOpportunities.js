@@ -22,6 +22,7 @@ const JobOpportunities = () => {
     title: '',
     company: '',
     location: '',
+    job_type: 'Full-time',
     salary_range: '',
     description: '',
     requirements: ''
@@ -40,7 +41,7 @@ const JobOpportunities = () => {
         title: j.title,
         company: j.company,
         location: j.location,
-        type: 'Full-time', // Default since job_type column doesn't exist
+        type: j.job_type || 'Full-time',
         salary: j.salary_range,
         description: j.description,
         requirements: j.requirements ? j.requirements.split(',').map(s => s.trim()) : [],
@@ -50,8 +51,22 @@ const JobOpportunities = () => {
       const locs = Array.from(new Set(mapped.map(j => j.location).filter(Boolean))).sort();
       setLocations(['All', ...locs]);
     };
+    
+    const fetchSavedJobs = async () => {
+      if (user?.id) {
+        const { data } = await supabase
+          .from('saved_jobs')
+          .select('job_id')
+          .eq('user_id', user.id);
+        if (data) {
+          setSavedJobs(data.map(s => s.job_id));
+        }
+      }
+    };
+    
     fetchJobs();
-  }, []);
+    fetchSavedJobs();
+  }, [user]);
 
   const jobFields = [
     { 
@@ -155,6 +170,7 @@ const JobOpportunities = () => {
           title: jobFormData.title,
           company: jobFormData.company,
           location: jobFormData.location,
+          job_type: jobFormData.job_type,
           salary_range: jobFormData.salary_range,
           description: jobFormData.description,
           requirements: jobFormData.requirements,
@@ -173,6 +189,7 @@ const JobOpportunities = () => {
         title: '',
         company: '',
         location: '',
+        job_type: 'Full-time',
         salary_range: '',
         description: '',
         requirements: ''
@@ -189,7 +206,7 @@ const JobOpportunities = () => {
         title: j.title,
         company: j.company,
         location: j.location,
-        type: 'Full-time', // Default since job_type column doesn't exist
+        type: j.job_type || 'Full-time',
         salary: j.salary_range,
         description: j.description,
         requirements: j.requirements ? j.requirements.split(',').map(s => s.trim()) : [],
@@ -209,6 +226,7 @@ const JobOpportunities = () => {
       title: '',
       company: '',
       location: '',
+      job_type: 'Full-time',
       salary_range: '',
       description: '',
       requirements: ''
@@ -216,16 +234,44 @@ const JobOpportunities = () => {
   };
 
   const handleApplyJob = (job) => {
-    toast.success(`Application submitted for ${job.title} at ${job.company}!`);
+    window.open('https://www.uic.edu.ph/tag/uic-alumni-excellence/', '_blank');
+    toast.info('Redirecting to UIC Alumni website...');
   };
 
-  const handleSaveJob = (jobId) => {
-    if (savedJobs.includes(jobId)) {
-      setSavedJobs(savedJobs.filter(id => id !== jobId));
-      toast.info('Job removed from saved list');
-    } else {
-      setSavedJobs([...savedJobs, jobId]);
-      toast.success('Job saved to your list');
+  const handleSaveJob = async (jobId) => {
+    if (!user?.id) {
+      toast.error('Please login to save jobs');
+      return;
+    }
+
+    try {
+      if (savedJobs.includes(jobId)) {
+        // Remove from saved jobs
+        const { error } = await supabase
+          .from('saved_jobs')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('job_id', jobId);
+
+        if (error) throw error;
+        setSavedJobs(savedJobs.filter(id => id !== jobId));
+        toast.info('Job removed from saved list');
+      } else {
+        // Add to saved jobs
+        const { error } = await supabase
+          .from('saved_jobs')
+          .insert({
+            user_id: user.id,
+            job_id: jobId
+          });
+
+        if (error) throw error;
+        setSavedJobs([...savedJobs, jobId]);
+        toast.success('Job saved to your list');
+      }
+    } catch (error) {
+      console.error('Error saving job:', error);
+      toast.error('Failed to save job');
     }
   };
 
@@ -423,17 +469,34 @@ const JobOpportunities = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="location">Location *</label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={jobFormData.location}
-                  onChange={handleJobFormChange}
-                  required
-                  placeholder="e.g., Davao City, Philippines"
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="location">Location *</label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={jobFormData.location}
+                    onChange={handleJobFormChange}
+                    required
+                    placeholder="e.g., Davao City, Philippines"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="job_type">Employment Type *</label>
+                  <select
+                    id="job_type"
+                    name="job_type"
+                    value={jobFormData.job_type}
+                    onChange={handleJobFormChange}
+                    required
+                  >
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">

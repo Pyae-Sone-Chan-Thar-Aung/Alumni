@@ -436,8 +436,8 @@
 /* Alumni Cards Grid */
 .members-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -495,8 +495,8 @@
   position: relative;
   background: white;
   border: 1px solid #F3F3F3;
-  border-radius: 16px;
-  padding: 1.75rem;
+  border-radius: 12px;
+  padding: 1rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -532,16 +532,16 @@
 .member-avatar {
   position: relative;
   display: inline-block;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .member-avatar img {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #F9FAFB;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 2px solid #F9FAFB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 
@@ -552,88 +552,156 @@
 
 .online-status {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 14px;
-  height: 14px;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
   background: #10B981;
   border-radius: 50%;
-  border: 3px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Member Information */
 .member-info {
   width: 100%;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .member-info h3 {
   color: #2E2E2E;
   font-family: 'Poppins', sans-serif;
-  font-size: 1.125rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   line-height: 1.3;
 }
 
 .member-course {
   color: #009FD9;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
   font-family: 'Inter', sans-serif;
 }
 
 .member-batch {
   color: #6B7280;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .member-job {
   color: #4B5563;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  margin-bottom: 0.35rem;
   font-weight: 500;
+  line-height: 1.3;
 }
 
 .member-location {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   color: #6B7280;
-  font-size: 0.8rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.7rem;
+  margin-bottom: 0.35rem;
 }
 
 .member-location svg {
   color: #E03A72;
-  width: 12px;
+  width: 10px;
   flex-shrink: 0;
 }
 
 .member-active {
   color: #9CA3AF;
-  font-size: 0.75rem;
-  margin-bottom: 1rem;
+  font-size: 0.65rem;
+  margin-bottom: 0.5rem;
   font-style: italic;
 }
 
 /* Member Actions */
 .member-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   width: 100%;
 }
 
 .member-actions .btn {
   flex: 1;
-  padding: 10px 12px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+/* Pagination Styles */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: white;
+  color: #6B7280;
   font-size: 0.875rem;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #F9FAFB;
+  border-color: #009FD9;
+  color: #009FD9;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.pagination-number {
+  min-width: 40px;
+  height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: white;
+  color: #6B7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-number:hover {
+  background: #F9FAFB;
+  border-color: #009FD9;
+  color: #009FD9;
+}
+
+.pagination-number.active {
+  background: linear-gradient(135deg, #E03A72, #C2185B);
+  color: white;
+  border-color: #E03A72;
 }
 
 /* No Results State */
@@ -677,11 +745,27 @@
   }
 
   .members-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 
   .member-actions {
     flex-direction: column;
+  }
+  
+  .pagination {
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  .pagination-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .pagination-number {
+    min-width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
   }
 }
 
@@ -691,7 +775,7 @@
   }
 
   .main-content {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .batch-selector,
@@ -700,7 +784,27 @@
   }
 
   .member-card {
-    padding: 1rem;
+    padding: 0.75rem;
+  }
+  
+  .members-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .pagination-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  
+  .pagination-number {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
   }
 }
 

@@ -19,6 +19,8 @@ const Batchmates = () => {
   const [selectedBatchmate, setSelectedBatchmate] = useState(null);
   const [messageContent, setMessageContent] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
 
   // Load all alumni and current user info
   useEffect(() => {
@@ -309,6 +311,22 @@ const Batchmates = () => {
     return matchesSearch && matchesCourse && matchesBatchYear;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBatchmates.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentBatchmates = filteredBatchmates.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCourse, showBatchmatesOnly]);
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Show loading state
   if (loading) {
     return (
@@ -393,7 +411,7 @@ const Batchmates = () => {
               <h2>All Alumni ({filteredBatchmates.length})</h2>
               {viewMode === 'grid' ? (
                 <div className="members-grid">
-                  {filteredBatchmates.map(batchmate => (
+                  {currentBatchmates.map(batchmate => (
                     <div key={batchmate.id} className="member-card">
                       <div className="member-avatar">
                         <img src={batchmate.avatar} alt={batchmate.name} />
@@ -467,6 +485,51 @@ const Batchmates = () => {
                 <div className="no-results">
                   <h3>No alumni found</h3>
                   <p>Try adjusting your search terms or filters</p>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="pagination-numbers">
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNumber}
+                          className={`pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
+                          onClick={() => goToPage(pageNumber)}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </div>

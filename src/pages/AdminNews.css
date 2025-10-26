@@ -107,6 +107,62 @@
 .checkbox-label input[type="checkbox"] {
   margin: 0;
 }
+
+.image-upload-section {
+  margin: 1rem 0;
+}
+
+.image-upload-section label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.image-file-input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+
+.image-file-input::-webkit-file-upload-button {
+  padding: 0.5rem 1rem;
+  background: #ff69b4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.image-file-input::-webkit-file-upload-button:hover {
+  background: #ff1493;
+}
+
+.image-preview-wrapper {
+  margin-top: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.image-preview-wrapper img {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  object-fit: cover;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
 .news-list {
   display: flex;
   flex-direction: column;

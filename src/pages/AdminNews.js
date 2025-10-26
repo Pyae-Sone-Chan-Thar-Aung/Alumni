@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
-import { FaPlus, FaEdit, FaTrash, FaNewspaper, FaSave, FaTimes, FaStar, FaRegStar, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaNewspaper, FaSave, FaTimes, FaStar, FaRegStar, FaEye, FaEyeSlash, FaImage, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import './AdminNews.css';
 
@@ -37,8 +37,12 @@ const AdminNews = () => {
     content: '', 
     category: 'Announcement', 
     isImportant: false,
-    isPublished: true 
+    isPublished: true,
+    imageUrl: ''
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +65,8 @@ const AdminNews = () => {
         date: item.published_at?.slice(0, 10) || item.created_at?.slice(0, 10),
         category: item.category,
         isImportant: !!item.is_important,
-        isPublished: !!item.is_published
+        isPublished: !!item.is_published,
+        imageUrl: item.image_url || null
       }));
       
       setNews(formattedNews);
@@ -77,18 +82,75 @@ const AdminNews = () => {
     setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setForm({ ...form, imageUrl: '' });
+  };
+
+  const uploadImage = async (file) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `news_${Date.now()}.${fileExt}`;
+    const filePath = `news-images/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('news-images')
+      .upload(filePath, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('news-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
+      let imageUrl = form.imageUrl;
+
+      // Upload new image if selected
+      if (imageFile) {
+        setUploading(true);
+        imageUrl = await uploadImage(imageFile);
+        setUploading(false);
+      }
+
       const newsData = {
         title: form.title,
         content: form.content,
         category: form.category,
         is_published: form.isPublished,
         is_important: form.isImportant,
-        published_at: form.isPublished ? new Date().toISOString() : null
+        published_at: form.isPublished ? new Date().toISOString() : null,
+        image_url: imageUrl || null
       };
 
       if (editingId) {
@@ -123,8 +185,11 @@ const AdminNews = () => {
       content: '', 
       category: 'Announcement', 
       isImportant: false,
-      isPublished: true 
+      isPublished: true,
+      imageUrl: ''
     });
+    setImageFile(null);
+    setImagePreview(null);
     setShowForm(false);
     setEditingId(null);
   };
@@ -135,8 +200,12 @@ const AdminNews = () => {
       content: item.content || '',
       category: item.category,
       isImportant: item.isImportant,
-      isPublished: item.isPublished
+      isPublished: item.isPublished,
+      imageUrl: item.imageUrl || ''
     });
+    if (item.imageUrl) {
+      setImagePreview(item.imageUrl);
+    }
     setEditingId(item.id);
     setShowForm(true);
   };
@@ -250,6 +319,29 @@ const AdminNews = () => {
               required
             />
             
+            {/* Image Upload Section */}
+            <div className="image-upload-section">
+              <label>Cover Image (Optional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="image-file-input"
+              />
+              {imagePreview && (
+                <div className="image-preview-wrapper">
+                  <img src={imagePreview} alt="Preview" />
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-danger"
+                    onClick={removeImage}
+                  >
+                    <FaTimesCircle /> Remove
+                  </button>
+                </div>
+              )}
+            </div>
+            
             <div className="form-options">
               <label className="checkbox-label">
                 <input
@@ -273,8 +365,8 @@ const AdminNews = () => {
             </div>
             
             <div className="form-actions">
-              <button type="submit" className="btn btn-success" disabled={loading}>
-                <FaSave /> {editingId ? 'Update News' : 'Post News'}
+              <button type="submit" className="btn btn-success" disabled={loading || uploading}>
+                <FaSave /> {uploading ? 'Uploading Image...' : editingId ? 'Update News' : 'Post News'}
               </button>
               <button type="button" className="btn btn-outline" onClick={resetForm}>
                 <FaTimes /> Cancel

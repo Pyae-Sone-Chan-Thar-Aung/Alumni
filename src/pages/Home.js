@@ -115,8 +115,13 @@ College of Computer Studies graduates worldwide.`}
             </div>
           ) : featuredNews.length > 0 ? (
             <div className="news-grid">
-              {featuredNews.filter(news => news.is_important).slice(0, 3).map(news => (
-                <div key={news.id} className="news-card important">
+              {featuredNews.slice(0, 3).map(news => (
+                <div key={news.id} className={`news-card ${news.is_important ? 'important' : ''}`}>
+                  {news.image_url && (
+                    <div className="news-image">
+                      <img src={news.image_url} alt={news.title} />
+                    </div>
+                  )}
                   <div className="news-header">
                     <span className="news-category">{news.category}</span>
                     <span className="news-date">{new Date(news.published_at || news.created_at).toLocaleDateString()}</span>

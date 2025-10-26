@@ -389,12 +389,181 @@
 .skeleton-pill { width: 120px; height: 22px; border-radius: 999px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .news-featured { grid-template-columns: 1fr; }
-  .featured-gradient { background: linear-gradient(180deg, rgba(0,0,0,0.45), transparent 40%); }
+/* ==========================================
+   RESPONSIVE DESIGN - COMPREHENSIVE
+   ========================================== */
+
+/* Extra small devices (320px - 374px) */
+@media (max-width: 374px) {
+  .news-page {
+    padding: 1rem 0;
+  }
+  
+  .news-header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .news-header p {
+    font-size: 0.9rem;
+  }
+  
+  .news-filters {
+    margin-bottom: 1.5rem;
+  }
+  
+  .category-filters {
+    gap: 0.4rem;
+  }
+  
+  .category-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+  
+  .news-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .news-card {
+    border-radius: 12px;
+  }
+  
+  .news-image {
+    height: 160px;
+  }
+  
+  .news-content {
+    padding: 1rem;
+  }
+  
+  .news-content h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .news-content p {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .news-header-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .news-category {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+  }
+  
+  .news-date {
+    font-size: 0.75rem;
+  }
+  
+  .news-modal {
+    padding: 0.5rem;
+  }
+  
+  .modal-content {
+    padding: 1rem;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 12px;
+  }
+  
+  .modal-close {
+    width: 36px;
+    height: 36px;
+    font-size: 1.5rem;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .modal-content h2 {
+    font-size: 1.25rem;
+    padding-right: 2rem;
+  }
+  
+  .modal-image {
+    margin: 1rem 0;
+  }
+  
+  .modal-image img {
+    max-height: 200px;
+  }
+  
+  .featured-title {
+    font-size: 1.1rem;
+  }
+  
+  .featured-excerpt {
+    display: none;
+  }
 }
 
+/* Small devices (375px - 479px) */
+@media (min-width: 375px) and (max-width: 479px) {
+  .news-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .news-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content h2 {
+    font-size: 1.4rem;
+  }
+  
+  .featured-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Medium devices (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .news-header h1 {
+    font-size: 2rem;
+  }
+  
+  .news-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .news-filters {
+    margin-bottom: 2rem;
+  }
+  
+  .featured-title {
+    font-size: 1.3rem;
+  }
+  
+  .news-content {
+    padding: 1.25rem;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .news-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .news-featured {
+    grid-template-columns: 1fr;
+  }
+  
+  .featured-gradient {
+    background: linear-gradient(180deg, rgba(0,0,0,0.45), transparent 40%);
+  }
+}
+
+/* Tablets and below (768px and down) */
 @media (max-width: 768px) {
   .news-header h1 {
     font-size: 2rem;
@@ -422,24 +591,47 @@
   .modal-content h2 {
     font-size: 1.5rem;
   }
+  
+  .search-box input {
+    font-size: 14px;
+    padding: 10px 12px 10px 40px;
+  }
 }
 
-@media (max-width: 480px) {
-  .news-filters { margin-bottom: 2rem; }
-  .featured-title { font-size: 1.3rem; }
-  .featured-excerpt { display: none; }
-
-  .news-content {
-    padding: 1rem;
+/* Desktop (1024px and below) */
+@media (max-width: 1024px) {
+  .news-featured {
+    grid-template-columns: 1fr;
   }
-
-  .news-header-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+  
+  .featured-gradient {
+    background: linear-gradient(180deg, rgba(0,0,0,0.45), transparent 40%);
   }
+}
 
+/* Landscape mode for phones */
+@media (max-width: 767px) and (orientation: landscape) {
+  .news-page {
+    padding: 1rem 0;
+  }
+  
+  .news-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .news-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .news-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  .news-image {
+    height: 150px;
+  }
+  
   .modal-content {
-    padding: 1rem;
+    max-height: 85vh;
   }
 }

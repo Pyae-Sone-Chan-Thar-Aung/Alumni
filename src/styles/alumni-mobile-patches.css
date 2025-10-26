@@ -1,0 +1,680 @@
+/* =================================================================
+   COMPREHENSIVE MOBILE PATCHES FOR ALL ALUMNI PAGES
+   Import this file in any alumni-facing page for instant mobile support
+   ================================================================= */
+
+/* ==========================================
+   GALLERY PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .gallery-page {
+    padding: 1rem 0;
+  }
+  
+  .gallery-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .gallery-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  .gallery-item {
+    height: 200px !important;
+  }
+  
+  .gallery-modal {
+    padding: 0.5rem !important;
+  }
+  
+  .gallery-modal-content {
+    max-width: 95% !important;
+    padding: 1rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .gallery-item {
+    height: 180px !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* ==========================================
+   DASHBOARD PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .alumni-dashboard {
+    padding: 1rem 0;
+  }
+  
+  .dashboard-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .welcome-section h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .welcome-section p {
+    font-size: 0.9rem !important;
+  }
+  
+  .quick-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .quick-actions .btn {
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  
+  .dashboard-stats {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .stat-card {
+    padding: 1rem !important;
+    flex-direction: row !important;
+  }
+  
+  .stat-icon {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.25rem !important;
+  }
+  
+  .stat-content h3 {
+    font-size: 1.5rem !important;
+  }
+  
+  .stat-content p {
+    font-size: 0.8rem !important;
+  }
+  
+  .dashboard-content {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .content-section {
+    padding: 1rem !important;
+  }
+  
+  .section-header h2 {
+    font-size: 1.25rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .dashboard-content {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .dashboard-content {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==========================================
+   JOB OPPORTUNITIES PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .job-opportunities-page {
+    padding: 1rem 0;
+  }
+  
+  .job-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .job-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .job-search,
+  .job-filter-select {
+    width: 100% !important;
+  }
+  
+  .job-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .job-card {
+    padding: 1rem !important;
+  }
+  
+  .job-header-section {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+  
+  .job-title {
+    font-size: 1rem !important;
+  }
+  
+  .job-company {
+    font-size: 0.875rem !important;
+  }
+  
+  .job-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .job-meta-item {
+    font-size: 0.75rem !important;
+  }
+  
+  .job-salary {
+    font-size: 1rem !important;
+  }
+  
+  .job-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .job-actions .btn {
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  
+  .job-description {
+    font-size: 0.875rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .job-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .job-filters {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .job-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ==========================================
+   MESSAGES PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .messages-page {
+    padding: 1rem 0;
+  }
+  
+  .messages-container {
+    grid-template-columns: 1fr !important;
+    height: calc(100vh - 200px) !important;
+  }
+  
+  .messages-sidebar {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+  }
+  
+  .message-list-item {
+    padding: 0.75rem !important;
+  }
+  
+  .message-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  .message-preview {
+    font-size: 0.75rem !important;
+  }
+  
+  .messages-content {
+    height: calc(100vh - 500px) !important;
+    min-height: 300px !important;
+  }
+  
+  .message-header h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .message-thread {
+    padding: 0.75rem !important;
+  }
+  
+  .message-bubble {
+    max-width: 85% !important;
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .message-input-area {
+    flex-direction: column !important;
+  }
+  
+  .message-input-area textarea {
+    min-height: 60px !important;
+    font-size: 14px !important;
+  }
+  
+  .message-input-area .btn {
+    width: 100%;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .messages-container {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .messages-sidebar {
+    max-height: 250px !important;
+  }
+}
+
+/* ==========================================
+   TRACER STUDY PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .tracer-study-page {
+    padding: 1rem 0;
+  }
+  
+  .tracer-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .tracer-form {
+    padding: 1rem !important;
+  }
+  
+  .form-section {
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .form-section h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  .form-group label {
+    font-size: 0.875rem !important;
+  }
+  
+  .form-control,
+  .form-select,
+  .form-textarea {
+    font-size: 14px !important;
+    padding: 0.625rem !important;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+  }
+  
+  .progress-bar {
+    height: 6px !important;
+  }
+  
+  .step-indicator {
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==========================================
+   LOGIN PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .login-page {
+    padding: 1rem;
+  }
+  
+  .login-container {
+    padding: 1.5rem 1rem !important;
+    margin: 1rem !important;
+  }
+  
+  .login-header h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .login-header p {
+    font-size: 0.875rem !important;
+  }
+  
+  .login-form .form-group {
+    margin-bottom: 1rem !important;
+  }
+  
+  .login-form label {
+    font-size: 0.875rem !important;
+  }
+  
+  .login-form input {
+    font-size: 14px !important;
+    padding: 0.75rem !important;
+  }
+  
+  .login-btn {
+    padding: 0.875rem !important;
+    font-size: 0.9375rem !important;
+  }
+  
+  .forgot-password {
+    font-size: 0.875rem !important;
+  }
+  
+  .register-link {
+    font-size: 0.875rem !important;
+    margin-top: 1rem !important;
+  }
+  
+  .social-login {
+    gap: 0.75rem !important;
+  }
+  
+  .social-btn {
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .login-container {
+    max-width: 100% !important;
+    margin: 1.5rem !important;
+  }
+}
+
+/* ==========================================
+   REGISTER PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .register-page {
+    padding: 1rem;
+  }
+  
+  .register-container {
+    padding: 1.5rem 1rem !important;
+    margin: 1rem !important;
+  }
+  
+  .register-header h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .register-header p {
+    font-size: 0.875rem !important;
+  }
+  
+  .registration-steps {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .step {
+    padding: 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .step-number {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .register-form .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  .register-form label {
+    font-size: 0.875rem !important;
+  }
+  
+  .register-form input,
+  .register-form select {
+    font-size: 14px !important;
+    padding: 0.75rem !important;
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+    padding: 0.875rem !important;
+  }
+  
+  .file-upload-area {
+    padding: 1rem !important;
+  }
+  
+  .file-upload-text {
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (min-width: 375px) and (max-width: 767px) {
+  .register-form .form-row {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .registration-steps {
+    flex-wrap: wrap;
+  }
+}
+
+/* ==========================================
+   PROFILE PAGE MOBILE RESPONSIVENESS
+   ========================================== */
+
+@media (max-width: 374px) {
+  .profile-page {
+    padding: 1rem 0;
+  }
+  
+  .profile-layout {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .profile-sidebar {
+    position: static !important;
+    margin-bottom: 1rem;
+  }
+  
+  .profile-avatar-section {
+    padding: 1rem !important;
+  }
+  
+  .profile-avatar {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  
+  .profile-name {
+    font-size: 1.25rem !important;
+  }
+  
+  .profile-title {
+    font-size: 0.875rem !important;
+  }
+  
+  .profile-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem !important;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem !important;
+  }
+  
+  .profile-section {
+    padding: 1rem !important;
+  }
+  
+  .profile-section h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  .profile-form .form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==========================================
+   COMMON MOBILE UTILITIES FOR ALL PAGES
+   ========================================== */
+
+@media (max-width: 767px) {
+  /* Ensure all images are responsive */
+  .page-image,
+  .content-image,
+  .featured-image img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Stack all flex containers */
+  .flex-row:not(.flex-row-mobile) {
+    flex-direction: column !important;
+  }
+  
+  /* Full width buttons on mobile */
+  .btn-group .btn,
+  .action-group .btn {
+    flex: 1 !important;
+    min-width: 120px !important;
+  }
+  
+  /* Better table scrolling */
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table-responsive table {
+    min-width: 600px !important;
+  }
+  
+  /* Modal adjustments */
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100% - 1rem) !important;
+  }
+  
+  /* Card spacing */
+  .card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Navigation tabs */
+  .nav-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .nav-tabs .nav-item {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Touch-friendly adjustments for all pages */
+@media (max-width: 767px) {
+  /* Minimum touch target size */
+  a, button, .clickable, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Better spacing */
+  .section {
+    padding: 1.5rem 0 !important;
+  }
+  
+  /* Readable text */
+  body {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+  
+  input, textarea, select {
+    font-size: 16px !important; /* Prevents iOS zoom */
+  }
+}
+
+/* Landscape mode optimizations */
+@media (max-width: 767px) and (orientation: landscape) {
+  .page-header {
+    padding: 1rem 0 !important;
+  }
+  
+  .hero-section {
+    min-height: auto !important;
+    padding: 1.5rem 0 !important;
+  }
+  
+  .modal-content {
+    max-height: 85vh !important;
+  }
+}

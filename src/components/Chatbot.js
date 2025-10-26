@@ -113,7 +113,7 @@ const Chatbot = ({ isOpen, onToggle }) => {
 
     try {
       let botResponse;
-      
+
       if (isOllamaConnected) {
         // Build conversation context with proper system instructions
         const contextData = {
@@ -164,7 +164,7 @@ Provide a helpful, accurate response in the user's language:`;
           top_k: 40,
           num_predict: 256
         });
-        
+
         if (response.success) {
           botResponse = response.response;
           console.log('Ollama AI Response:', botResponse);
@@ -184,7 +184,7 @@ Provide a helpful, accurate response in the user's language:`;
         sender: 'bot',
         timestamp: new Date()
       };
-      
+
       setMessages(prev => [...prev, botMessage]);
       if (!isOpen) setUnreadCount(c => c + 1);
     } catch (error) {
@@ -210,20 +210,20 @@ Provide a helpful, accurate response in the user's language:`;
 
   const getBasicResponse = (message) => {
     const lowerMessage = message.toLowerCase();
-    
+
     // Multi-language basic responses
     if (lowerMessage.includes('kamusta') || lowerMessage.includes('kumusta') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
       return "Hello! I'm Jaguar, your CCS Alumni assistant. How can I help you today? \n\nKumusta! Ako si Jaguar, ang iyong CCS Alumni assistant. Paano kita matutulungan?";
     }
-    
+
     if (lowerMessage.includes('salamat') || lowerMessage.includes('thank')) {
       return "You're welcome! / Walang anuman!";
     }
-    
+
     if (lowerMessage.includes('help') || lowerMessage.includes('tulong')) {
       return "I can help you with:\n• System navigation\n• Alumni features\n• Job opportunities\n• Profile updates\n• Events information\n\nYou can also click the 📝 button below to switch to guided mode with buttons.";
     }
-    
+
     return "I can help you navigate the CCS Alumni system. You can ask me questions in English, Filipino, or Cebuano! \n\nPwede mo akong tanungin sa English, Filipino, o Cebuano! \n\nClick the 📝 button below for guided mode with topic buttons.";
   };
 
@@ -232,12 +232,12 @@ Provide a helpful, accurate response in the user's language:`;
     if (!isAIMode) {
       // Check Ollama connection when entering AI mode
       await checkOllamaConnection();
-      
+
       // Switching to AI mode
-      const connectionStatus = isOllamaConnected 
-        ? '✅ Ollama AI Connected - Intelligent responses enabled!' 
+      const connectionStatus = isOllamaConnected
+        ? '✅ Ollama AI Connected - Intelligent responses enabled!'
         : '⚠️ Ollama not running - Using basic fallback responses';
-      
+
       const aiMessage = {
         id: Date.now(),
         text: `🤖 **AI Chat Mode Activated!**\n\n${connectionStatus}\n\n🌐 Multi-Language Support:\n• English\n• Filipino/Tagalog\n• Cebuano\n\nI'll automatically detect and respond in your language!\n\n💡 **Try asking:**\n- "How do I update my profile?"\n- "Paano ko makikita ang job opportunities?"\n- "Unsaon nako pag-connect sa akong batchmates?"\n\nType your question below...`,
@@ -557,7 +557,7 @@ Provide a helpful, accurate response in the user's language:`;
           </div>
 
           <div className="chatbot-input-container">
-            <button 
+            <button
               className="mode-toggle-btn"
               onClick={toggleAIMode}
               title={isAIMode ? 'Switch to Guided Mode' : 'Switch to AI Chat Mode'}
@@ -573,7 +573,7 @@ Provide a helpful, accurate response in the user's language:`;
               placeholder={isAIMode ? "Type your question... (English/Filipino/Cebuano)" : "Click 🤖 for AI chat mode"}
               disabled={isTyping || !isAIMode}
             />
-            <button 
+            <button
               className="send-btn"
               onClick={handleSendMessage}
               disabled={isTyping || !inputMessage.trim() || !isAIMode}

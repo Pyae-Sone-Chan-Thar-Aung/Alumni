@@ -1,11 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaRobot } from 'react-icons/fa';
+import { FaTimes, FaPaperPlane } from 'react-icons/fa';
+import ollamaService from '../services/ollamaService';
 import './Chatbot.css';
 
 const Chatbot = ({ isOpen, onToggle }) => {
   const [conversationState, setConversationState] = useState('welcome');
   const [messages, setMessages] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isAIMode, setIsAIMode] = useState(false);
+  const [isOllamaConnected, setIsOllamaConnected] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Conversation flow configuration
@@ -81,9 +86,170 @@ const Chatbot = ({ isOpen, onToggle }) => {
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       initializeConversation();
+      checkOllamaConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  const checkOllamaConnection = async () => {
+    const connected = await ollamaService.checkConnection();
+    setIsOllamaConnected(connected);
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isTyping) return;
+
+    const userMessage = {
+      id: Date.now(),
+      text: inputMessage,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage;
+    setInputMessage('');
+    setIsTyping(true);
+
+    try {
+      let botResponse;
+      
+      if (isOllamaConnected) {
+        // Build conversation context with proper system instructions
+        const contextData = {
+          systemRole: "You are Jaguar, a helpful AI assistant for the CCS Alumni System. You help users navigate the system, answer questions about features, and provide guidance.",
+          languageRules: `CRITICAL LANGUAGE RULES:
+- Automatically detect if the user is writing in English, Filipino/Tagalog, or Cebuano
+- ALWAYS respond in the SAME language as the user's question
+- Match the user's language naturally and fluently
+- Do not mix languages unless the user does`,
+          privacyRules: `STRICT PRIVACY RULES:
+- NEVER share: passwords, email addresses, phone numbers, home addresses, or personal contact information of other users
+- NEVER share: individual salary data or personal financial information
+- ONLY share: general system information, public features, and aggregated anonymous statistics
+- If asked for private data: politely refuse and suggest contacting admin@ccs.edu`,
+          systemKnowledge: `CCS Alumni System Features:
+1. Profile Management: Users can update their profile, add employment info, education details
+2. Alumni Directory: Search and connect with batchmates (respects privacy settings)
+3. Job Board: Browse job opportunities, apply for positions
+4. Events: View upcoming alumni events, reunions, workshops
+5. Tracer Study: Submit employment data, view anonymous statistics
+6. Messaging: Communicate with batchmates you're connected with
+7. Gallery: View photos from CCS events
+
+How to help users:
+- Navigation: Guide them to the right page/feature
+- Features: Explain what each section does
+- Troubleshooting: Help with common issues
+- Privacy: Always respect and protect user privacy`,
+          userQuestion: currentInput
+        };
+
+        // Create intelligent prompt
+        const intelligentPrompt = `${contextData.systemRole}
+
+${contextData.languageRules}
+
+${contextData.privacyRules}
+
+${contextData.systemKnowledge}
+
+User asks: "${contextData.userQuestion}"
+
+Provide a helpful, accurate response in the user's language:`;
+
+        const response = await ollamaService.sendMessage(intelligentPrompt, null, {
+          temperature: 0.8,
+          top_p: 0.9,
+          top_k: 40,
+          num_predict: 256
+        });
+        
+        if (response.success) {
+          botResponse = response.response;
+          console.log('Ollama AI Response:', botResponse);
+        } else {
+          console.error('Ollama Error:', response.error);
+          botResponse = getBasicResponse(currentInput);
+        }
+      } else {
+        // Fallback to basic responses when Ollama is not connected
+        console.warn('Ollama not connected - using fallback responses');
+        botResponse = getBasicResponse(currentInput);
+      }
+
+      const botMessage = {
+        id: Date.now() + 1,
+        text: botResponse,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, botMessage]);
+      if (!isOpen) setUnreadCount(c => c + 1);
+    } catch (error) {
+      console.error('Message send error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: getBasicResponse(currentInput),
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const getBasicResponse = (message) => {
+    const lowerMessage = message.toLowerCase();
+    
+    // Multi-language basic responses
+    if (lowerMessage.includes('kamusta') || lowerMessage.includes('kumusta') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+      return "Hello! I'm Jaguar, your CCS Alumni assistant. How can I help you today? \n\nKumusta! Ako si Jaguar, ang iyong CCS Alumni assistant. Paano kita matutulungan?";
+    }
+    
+    if (lowerMessage.includes('salamat') || lowerMessage.includes('thank')) {
+      return "You're welcome! / Walang anuman!";
+    }
+    
+    if (lowerMessage.includes('help') || lowerMessage.includes('tulong')) {
+      return "I can help you with:\n• System navigation\n• Alumni features\n• Job opportunities\n• Profile updates\n• Events information\n\nYou can also click the 📝 button below to switch to guided mode with buttons.";
+    }
+    
+    return "I can help you navigate the CCS Alumni system. You can ask me questions in English, Filipino, or Cebuano! \n\nPwede mo akong tanungin sa English, Filipino, o Cebuano! \n\nClick the 📝 button below for guided mode with topic buttons.";
+  };
+
+  const toggleAIMode = async () => {
+    setIsAIMode(!isAIMode);
+    if (!isAIMode) {
+      // Check Ollama connection when entering AI mode
+      await checkOllamaConnection();
+      
+      // Switching to AI mode
+      const connectionStatus = isOllamaConnected 
+        ? '✅ Ollama AI Connected - Intelligent responses enabled!' 
+        : '⚠️ Ollama not running - Using basic fallback responses';
+      
+      const aiMessage = {
+        id: Date.now(),
+        text: `🤖 **AI Chat Mode Activated!**\n\n${connectionStatus}\n\n🌐 Multi-Language Support:\n• English\n• Filipino/Tagalog\n• Cebuano\n\nI'll automatically detect and respond in your language!\n\n💡 **Try asking:**\n- "How do I update my profile?"\n- "Paano ko makikita ang job opportunities?"\n- "Unsaon nako pag-connect sa akong batchmates?"\n\nType your question below...`,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    } else {
+      // Switching back to button mode
+      initializeConversation();
+    }
+  };
 
   const handleOptionClick = (optionId) => {
     // Add user's selection to messages
@@ -328,7 +494,10 @@ const Chatbot = ({ isOpen, onToggle }) => {
     <>
       <button className="chatbot-toggle" onClick={handleToggle} aria-label={isOpen ? 'Close chat' : 'Open chat'}>
         <div className="chatbot-toggle-icon">
-          <FaRobot />
+          <div className="robot-face">
+            <div className="robot-antenna"></div>
+            <div className="robot-mouth"></div>
+          </div>
         </div>
         <span className="chatbot-toggle-text">Ask Jaguar</span>
         {unreadCount > 0 && <span className="chatbot-badge" aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -338,7 +507,7 @@ const Chatbot = ({ isOpen, onToggle }) => {
         <div className="chatbot-container">
           <div className="chatbot-header">
             <div className="chatbot-title">
-              <FaRobot className="chatbot-icon" />
+              <span className="header-robot-icon">🤖</span>
               <span>Ask Jaguar</span>
             </div>
             <button className="chatbot-close" onClick={handleToggle} aria-label="Close chat">
@@ -358,7 +527,7 @@ const Chatbot = ({ isOpen, onToggle }) => {
                   ))}
                 </div>
 
-                {message.options && message.options.length > 0 && (
+                {!isAIMode && message.options && message.options.length > 0 && (
                   <div className="message-options">
                     {message.options.map((option) => (
                       <button
@@ -374,11 +543,43 @@ const Chatbot = ({ isOpen, onToggle }) => {
               </div>
             ))}
 
+            {isTyping && (
+              <div className="message-bubble bot">
+                <div className="typing-indicator">
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="chatbot-footer">
-            <span className="chatbot-footer-text">Type a Message</span>
+          <div className="chatbot-input-container">
+            <button 
+              className="mode-toggle-btn"
+              onClick={toggleAIMode}
+              title={isAIMode ? 'Switch to Guided Mode' : 'Switch to AI Chat Mode'}
+            >
+              {isAIMode ? '📝' : '🤖'}
+            </button>
+            <input
+              type="text"
+              className="chatbot-input"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={isAIMode ? "Type your question... (English/Filipino/Cebuano)" : "Click 🤖 for AI chat mode"}
+              disabled={isTyping || !isAIMode}
+            />
+            <button 
+              className="send-btn"
+              onClick={handleSendMessage}
+              disabled={isTyping || !inputMessage.trim() || !isAIMode}
+            >
+              <FaPaperPlane />
+            </button>
           </div>
         </div>
       )}

@@ -5,6 +5,19 @@ import { toast } from 'react-toastify';
 import './Profile.css';
 import { supabase } from '../config/supabaseClient';
 
+// Utility function to format date for input field
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.error('Date input formatting error:', error);
+    return '';
+  }
+};
+
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const [formData, setFormData] = useState({
@@ -16,7 +29,10 @@ const Profile = () => {
     company: '',
     address: '',
     city: '',
-    country: 'Philippines'
+    country: 'Philippines',
+    dateOfBirth: '',
+    course: '',
+    postalCode: ''
   });
   const [profileImage, setProfileImage] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profile_image_url || user?.profileImage || '/default-avatar.png');
@@ -96,7 +112,10 @@ const Profile = () => {
           company: profile?.company || pendingData?.company || prev.company || '',
           address: profile?.address || pendingData?.address || prev.address || '',
           city: profile?.city || pendingData?.city || prev.city || '',
-          country: profile?.country || pendingData?.country || prev.country || 'Philippines'
+          country: profile?.country || pendingData?.country || prev.country || 'Philippines',
+          dateOfBirth: formatDateForInput(profile?.date_of_birth || pendingData?.date_of_birth),
+          course: profile?.course || profile?.program || pendingData?.course || prev.course || '',
+          postalCode: profile?.postal_code || pendingData?.postal_code || prev.postalCode || ''
         }));
 
         // Set profile image
@@ -106,7 +125,11 @@ const Profile = () => {
           setProfileImageUrl(userData.profile_image_url);
         } else if (pendingData?.profile_image_url) {
           setProfileImageUrl(pendingData.profile_image_url);
+        } else {
+          setProfileImageUrl('/default-avatar.png');
         }
+        
+        console.log('Profile image URL set to:', profile?.profile_image_url || userData?.profile_image_url || pendingData?.profile_image_url || '/default-avatar.png');
 
         // Set academic data
         setProfileData({
@@ -139,14 +162,23 @@ const Profile = () => {
       formData.address,
       formData.city,
       formData.country,
-      profileData.course,
-      profileData.batch_year,
+      formData.dateOfBirth,
+      formData.course,
+      formData.postalCode,
       profileImageUrl
     ];
+    
+    console.log('Profile completion fields:', fields.map((field, index) => ({
+      field: ['firstName', 'lastName', 'phone', 'currentJob', 'company', 'address', 'city', 'country', 'dateOfBirth', 'course', 'postalCode', 'profileImage'][index],
+      value: field,
+      filled: field !== null && field !== undefined && String(field).trim() !== ''
+    })));
+    
     const total = fields.length;
     const filled = fields.filter(v => v !== null && v !== undefined && String(v).trim() !== '').length;
+    console.log(`Profile completion: ${filled}/${total} = ${Math.round((filled / total) * 100)}%`);
     setCompletion(Math.round((filled / total) * 100));
-  }, [formData, profileData, profileImageUrl]);
+  }, [formData, profileImageUrl]);
 
   const handleChange = (e) => {
     setFormData({
@@ -288,6 +320,10 @@ const Profile = () => {
           country: formData.country || 'Philippines',
           current_job: formData.currentJob || null,
           company: formData.company || null,
+          date_of_birth: formData.dateOfBirth || null,
+          course: formData.course || null,
+          program: formData.course || null,
+          postal_code: formData.postalCode || null,
           profile_image_url: profileImageUrl || null,
           updated_at: new Date().toISOString()
         }, {
@@ -437,7 +473,13 @@ const Profile = () => {
               </div>
               <div className="info-item">
                 <p className="info-label">Date of Birth</p>
-                <p className="info-value">25-5-2004</p>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  className="form-control"
+                />
               </div>
               <div className="info-item">
                 <p className="info-label">Email Address</p>
@@ -490,7 +532,14 @@ const Profile = () => {
               </div>
               <div className="info-item">
                 <p className="info-label">Course</p>
-                <p className="info-value">{profileData.course || 'Not specified'}</p>
+                <input
+                  type="text"
+                  name="course"
+                  value={formData.course}
+                  onChange={handleChange}
+                  className="form-control"
+                  placeholder="Enter your course"
+                />
               </div>
             </div>
           </div>
@@ -503,6 +552,17 @@ const Profile = () => {
               </button>
             </div>
             <div className="address-grid">
+              <div className="info-item">
+                <p className="info-label">Address</p>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="form-control"
+                  placeholder="Enter your full address"
+                />
+              </div>
               <div className="info-item">
                 <p className="info-label">Country</p>
                 <input
@@ -525,7 +585,14 @@ const Profile = () => {
               </div>
               <div className="info-item">
                 <p className="info-label">Postal Code</p>
-                <p className="info-value">1000</p>
+                <input
+                  type="text"
+                  name="postalCode"
+                  value={formData.postalCode}
+                  onChange={handleChange}
+                  className="form-control"
+                  placeholder="Enter postal code"
+                />
               </div>
             </div>
           </div>

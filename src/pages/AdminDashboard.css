@@ -168,7 +168,7 @@
 }
 
 .page-header { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 12px; flex-wrap: wrap; gap: 10px; }
-.breadcrumbs { display: inline-flex; align-items: center; gap: 8px; color: #64748b; font-weight: 600; }
+.breadcrumbs { display: inline-flex; align-items: center; gap: 8px; color: #64748b; font-weight: 600; font-size: 1.5rem; }
 .breadcrumbs .current { color: #0f172a; }
 .breadcrumbs .sep { color: #cbd5e1; }
 .kpis { display: inline-flex; gap: 8px; }

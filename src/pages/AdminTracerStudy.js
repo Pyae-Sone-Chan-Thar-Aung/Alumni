@@ -915,15 +915,28 @@ const AdminTracerStudy = () => {
 
         {/* Filters */}
         <div className="filters-section">
-          <div className="search-box">
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search by name, company, job title, or industry..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="filters-top-row">
+            <div className="search-box">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search by name, company, job title, or industry..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <button 
+              className="btn-download-excel"
+              onClick={exportToCSV}
+              title="Download Excel file with all response details"
+            >
+              <FaFileExcel />
+              <span>Download Excel</span>
+            </button>
           </div>
+
+          <div className="filter-divider"></div>
 
           <div className="filter-controls">
             <div className="filter-group">
@@ -974,72 +987,60 @@ const AdminTracerStudy = () => {
 
                 return (
                   <div className="table-row" role="row" key={response.id}>
-                    <div>
-                      <div className="graduate-info">
-                        <div className="avatar">
-                          <div className="initials">{initials}</div>
-                        </div>
-                        <div className="meta">
-                          <div className="name">{fullName}</div>
-                          <div className="sub">{email}</div>
-                          {response.phone && <div className="phone">{response.phone}</div>}
-                        </div>
-                      </div>
+                    {/* Graduate Column */}
+                    <div className="graduate-info">
+                      <div className="name">{fullName}</div>
+                      <div className="sub">{email}</div>
+                      {response.phone && <div className="phone">{response.phone}</div>}
                     </div>
 
-                    <div>
-                      <div className="program-info">
-                        <strong>{response.major || response.degree || 'N/A'}</strong>
-                        <p>{response.degree || 'Degree not specified'}</p>
-                        <div className="year">Class of {response.graduation_year || 'N/A'}</div>
-                      </div>
+                    {/* Program Column */}
+                    <div className="program-info">
+                      <strong>{response.major || response.degree || '—'}</strong>
+                      <p>{response.degree || '—'}</p>
+                      <div className="year">Class of {response.graduation_year || 'N/A'}</div>
                     </div>
 
-                    <div>
-                      <div className="employment-info">
-                        <div className={`status-badge badge bg-${getEmploymentStatusBadgeColor(response.employment_status)}`}>
-                          {response.employment_status || 'Not specified'}
-                        </div>
-                        {response.job_title && (
-                          <div className="job-title">{response.job_title}</div>
-                        )}
-                        {response.monthly_salary && (
-                          <div className="salary">{response.monthly_salary}</div>
-                        )}
+                    {/* Employment Column */}
+                    <div className="employment-info">
+                      <div className={`status-badge badge bg-${getEmploymentStatusBadgeColor(response.employment_status)}`}>
+                        {response.employment_status || 'Not specified'}
                       </div>
+                      {response.job_title && (
+                        <div className="job-title">{response.job_title}</div>
+                      )}
+                      {response.monthly_salary && (
+                        <div className="salary">{response.monthly_salary}</div>
+                      )}
                     </div>
 
-                    <div>
-                      <div className="company-info">
-                        <strong>{response.company_name || '—'}</strong>
-                        {response.industry && <p>{response.industry}</p>}
-                      </div>
+                    {/* Company Column */}
+                    <div className="company-info">
+                      <strong>{response.company_name || '—'}</strong>
+                      {response.industry && <p>{response.industry}</p>}
                     </div>
 
-                    <div>
-                      <div className="location-info">
-                        <FaMapMarkerAlt />
-                        <span>{response.work_location || response.address || '—'}</span>
-                      </div>
+                    {/* Location Column */}
+                    <div className="location-info">
+                      <FaMapMarkerAlt />
+                      <span>{response.work_location || response.address || '—'}</span>
                     </div>
 
-                    <div>
-                      <div className="date-info">
-                        <FaCalendar />
-                        <span>{submittedDate ? formatDate(submittedDate) : '—'}</span>
-                      </div>
+                    {/* Submitted Date Column */}
+                    <div className="date-info">
+                      <FaCalendar />
+                      <span>{submittedDate ? formatDate(submittedDate) : '—'}</span>
                     </div>
 
-                    <div>
-                      <div className="col-actions">
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => handleViewDetails(response)}
-                          title="View full response"
-                        >
-                          <FaEye /> View
-                        </button>
-                      </div>
+                    {/* Actions Column */}
+                    <div className="col-actions">
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => handleViewDetails(response)}
+                        title="View full response"
+                      >
+                        <FaEye /> View
+                      </button>
                     </div>
                   </div>
                 );

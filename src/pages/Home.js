@@ -38,9 +38,9 @@ const Home = () => {
         { count: jobCount },
         { count: eventCount }
       ] = await Promise.all([
-        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_verified', true),
         supabase.from('users').select('*', { count: 'exact', head: true }).eq('approval_status', 'approved'),
-        supabase.from('job_opportunities').select('*', { count: 'exact', head: true }),
+        supabase.from('job_opportunities').select('*', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('news').select('*', { count: 'exact', head: true }).eq('category', 'Event').eq('is_published', true)
       ]);
 
@@ -189,15 +189,15 @@ College of Computer Studies graduates worldwide.`}
               <div className="info-stats">
                 <div className="info-stat">
                   <span className="stat-number">120+</span>
-                  <span className="stat-label">Years of Excellence</span>
+                  <span className="stat-label" style={{ color: 'rgb(219, 39, 119)' }}>Years of Excellence</span>
                 </div>
                 <div className="info-stat">
                   <span className="stat-number">250,000+</span>
-                  <span className="stat-label">Alumni Worldwide</span>
+                  <span className="stat-label" style={{ color: 'rgb(219, 39, 119)' }}>Alumni Worldwide</span>
                 </div>
                 <div className="info-stat">
                   <span className="stat-number">55+</span>
-                  <span className="stat-label">Programs Offered</span>
+                  <span className="stat-label" style={{ color: 'rgb(219, 39, 119)' }}>Programs Offered</span>
                 </div>
               </div>
             </div>

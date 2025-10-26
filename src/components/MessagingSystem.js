@@ -18,6 +18,30 @@ import {
 } from 'react-icons/fa';
 import './MessagingSystem.css';
 
+// Helper function to get full profile picture URL
+const getProfilePictureUrl = (profilePicture) => {
+  if (!profilePicture) return '/default-avatar.png';
+  
+  // If already a full URL, return as is
+  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+    return profilePicture;
+  }
+  
+  // If it's a path in Supabase storage, construct the full URL
+  if (profilePicture.startsWith('profile-pictures/') || profilePicture.includes('/')) {
+    const { data } = supabase.storage
+      .from('profile-pictures')
+      .getPublicUrl(profilePicture);
+    return data?.publicUrl || '/default-avatar.png';
+  }
+  
+  // If it's just a filename, assume it's in the profile-pictures bucket
+  const { data } = supabase.storage
+    .from('profile-pictures')
+    .getPublicUrl(profilePicture);
+  return data?.publicUrl || '/default-avatar.png';
+};
+
 const MessagingSystem = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('inbox');
@@ -88,7 +112,15 @@ const MessagingSystem = () => {
       // Fetch user data for all message participants
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, first_name, last_name, profile_picture')
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          profile_picture,
+          user_profiles (
+            profile_image_url
+          )
+        `)
         .in('id', Array.from(userIds));
 
       if (usersError) {
@@ -96,12 +128,23 @@ const MessagingSystem = () => {
         throw usersError;
       }
 
-      // Enrich messages with user data
-      const enrichedMessages = messagesData.map(msg => ({
-        ...msg,
-        sender: usersData.find(u => u.id === msg.sender_id),
-        recipient: usersData.find(u => u.id === msg.recipient_id)
-      }));
+      // Enrich messages with user data and extract profile images
+      const enrichedMessages = messagesData.map(msg => {
+        const sender = usersData.find(u => u.id === msg.sender_id);
+        const recipient = usersData.find(u => u.id === msg.recipient_id);
+        
+        return {
+          ...msg,
+          sender: sender ? {
+            ...sender,
+            profile_picture: sender.user_profiles?.profile_image_url || sender.profile_picture
+          } : null,
+          recipient: recipient ? {
+            ...recipient,
+            profile_picture: recipient.user_profiles?.profile_image_url || recipient.profile_picture
+          } : null
+        };
+      });
 
       console.log('Messages loaded:', enrichedMessages);
       setMessages(enrichedMessages);
@@ -156,7 +199,15 @@ const MessagingSystem = () => {
       // Fetch user data for all connected users
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, first_name, last_name, profile_picture')
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          profile_picture,
+          user_profiles (
+            profile_image_url
+          )
+        `)
         .in('id', Array.from(userIds));
 
       if (usersError) {
@@ -164,12 +215,23 @@ const MessagingSystem = () => {
         throw usersError;
       }
 
-      // Enrich connections with user data
-      const enrichedConnections = connectionsData.map(conn => ({
-        ...conn,
-        requester: usersData.find(u => u.id === conn.requester_id),
-        recipient: usersData.find(u => u.id === conn.recipient_id)
-      }));
+      // Enrich connections with user data and extract profile images
+      const enrichedConnections = connectionsData.map(conn => {
+        const requester = usersData.find(u => u.id === conn.requester_id);
+        const recipient = usersData.find(u => u.id === conn.recipient_id);
+        
+        return {
+          ...conn,
+          requester: requester ? {
+            ...requester,
+            profile_picture: requester.user_profiles?.profile_image_url || requester.profile_picture
+          } : null,
+          recipient: recipient ? {
+            ...recipient,
+            profile_picture: recipient.user_profiles?.profile_image_url || recipient.profile_picture
+          } : null
+        };
+      });
 
       console.log('Connections loaded:', enrichedConnections);
       setConnections(enrichedConnections);
@@ -224,7 +286,15 @@ const MessagingSystem = () => {
       if (userIds.size > 0) {
         const { data: usersDataResult, error: usersError } = await supabase
           .from('users')
-          .select('id, first_name, last_name, profile_picture')
+          .select(`
+            id, 
+            first_name, 
+            last_name, 
+            profile_picture,
+            user_profiles (
+              profile_image_url
+            )
+          `)
           .in('id', Array.from(userIds));
 
         if (usersError) {
@@ -234,11 +304,18 @@ const MessagingSystem = () => {
         usersData = usersDataResult || [];
       }
 
-      // Enrich notifications with user data
-      const enrichedNotifications = notificationsData.map(notif => ({
-        ...notif,
-        related_user: usersData.find(u => u.id === notif.related_user_id)
-      }));
+      // Enrich notifications with user data and extract profile images
+      const enrichedNotifications = notificationsData.map(notif => {
+        const relatedUser = usersData.find(u => u.id === notif.related_user_id);
+        
+        return {
+          ...notif,
+          related_user: relatedUser ? {
+            ...relatedUser,
+            profile_picture: relatedUser.user_profiles?.profile_image_url || relatedUser.profile_picture
+          } : null
+        };
+      });
 
       console.log('Notifications loaded:', enrichedNotifications);
       setNotifications(enrichedNotifications);
@@ -578,8 +655,9 @@ const MessagingSystem = () => {
                   >
                     <div className="message-avatar">
                       <img
-                        src={message.sender?.profile_picture || '/default-avatar.png'}
+                        src={getProfilePictureUrl(message.sender?.profile_picture)}
                         alt={message.sender?.first_name}
+                        onError={(e) => { e.target.src = '/default-avatar.png'; }}
                       />
                     </div>
                     <div className="message-content">
@@ -618,8 +696,9 @@ const MessagingSystem = () => {
                   >
                     <div className="message-avatar">
                       <img
-                        src={message.recipient?.profile_picture || '/default-avatar.png'}
+                        src={getProfilePictureUrl(message.recipient?.profile_picture)}
                         alt={message.recipient?.first_name}
+                        onError={(e) => { e.target.src = '/default-avatar.png'; }}
                       />
                     </div>
                     <div className="message-content">
@@ -652,8 +731,9 @@ const MessagingSystem = () => {
                   <div key={connection.id} className="connection-item">
                     <div className="connection-avatar">
                       <img
-                        src={connection.requester?.profile_picture || '/default-avatar.png'}
+                        src={getProfilePictureUrl(connection.requester?.profile_picture)}
                         alt={connection.requester?.first_name}
+                        onError={(e) => { e.target.src = '/default-avatar.png'; }}
                       />
                     </div>
                     <div className="connection-content">
@@ -698,8 +778,9 @@ const MessagingSystem = () => {
                     <div key={connection.id} className="connection-item accepted">
                       <div className="connection-avatar">
                         <img
-                          src={otherUser?.profile_picture || '/default-avatar.png'}
+                          src={getProfilePictureUrl(otherUser?.profile_picture)}
                           alt={otherUser?.first_name}
+                          onError={(e) => { e.target.src = '/default-avatar.png'; }}
                         />
                       </div>
                       <div className="connection-content">
@@ -840,8 +921,9 @@ const MessagingSystem = () => {
               <div className="message-detail-header">
                 <div className="message-detail-avatar">
                   <img
-                    src={selectedMessage.sender?.profile_picture || '/default-avatar.png'}
+                    src={getProfilePictureUrl(selectedMessage.sender?.profile_picture)}
                     alt={selectedMessage.sender?.first_name}
+                    onError={(e) => { e.target.src = '/default-avatar.png'; }}
                   />
                 </div>
                 <div className="message-detail-info">

@@ -5,6 +5,36 @@ import { toast } from 'react-toastify';
 import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaBuilding, FaMapMarkerAlt, FaEdit, FaSave, FaTimes, FaCamera, FaCalendarAlt, FaSpinner, FaBriefcase } from 'react-icons/fa';
 import './AlumniProfile_new.css';
 
+// Utility function to format date for display
+const formatDateForDisplay = (dateString) => {
+  if (!dateString) return 'Not specified';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Not specified';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Not specified';
+  }
+};
+
+// Utility function to format date for input field
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.error('Date input formatting error:', error);
+    return '';
+  }
+};
+
 const CompletionWidget = ({ profile }) => {
   const fields = [
     profile?.first_name,
@@ -70,29 +100,10 @@ const AlumniProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      // Fetch user data with profile information
+      // First fetch user data
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select(`
-          id, email, first_name, last_name,
-          user_profiles (
-            first_name,
-            last_name,
-            student_id,
-            graduation_year,
-            batch_year,
-            program,
-            date_of_birth,
-            current_job_title,
-            current_company,
-            phone,
-            address,
-            city,
-            country,
-            postal_code,
-            profile_image_url
-          )
-        `)
+        .select('id, email, first_name, last_name')
         .eq('id', user.id)
         .single();
 
@@ -102,10 +113,18 @@ const AlumniProfile = () => {
         return;
       }
 
-      let userProfileData = userData.user_profiles?.[0] || {};
+      // Then fetch profile data separately to ensure we get the latest data
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      let userProfileData = profileData || {};
 
       // Fallback: if profile is missing/empty, use pending_registrations by email
-      if (!userProfileData || Object.keys(userProfileData).length === 0) {
+      if (profileError || !userProfileData || Object.keys(userProfileData).length === 0) {
+        console.log('No profile found, checking pending_registrations...');
         try {
           let { data: pending } = await supabase
             .from('pending_registrations')
@@ -156,24 +175,41 @@ const AlumniProfile = () => {
         }
       }
 
-      setProfile({ ...userData, ...userProfileData });
+      console.log('Profile data before setting state:', userProfileData);
+      console.log('Date of birth from DB:', userProfileData.date_of_birth);
+      console.log('Postal code from DB:', userProfileData.postal_code);
+
+      // Ensure profile includes all userProfileData fields
+      const combinedProfile = {
+        ...userData,
+        ...userProfileData,
+        // Explicitly ensure these fields are included
+        date_of_birth: userProfileData.date_of_birth,
+        postal_code: userProfileData.postal_code
+      };
+      
+      console.log('Combined profile being set:', combinedProfile);
+      setProfile(combinedProfile);
 
       // Set form data for editing
-      setFormData({
+      const formDataToSet = {
         first_name: userProfileData.first_name || userData.first_name || '',
         last_name: userProfileData.last_name || userData.last_name || '',
         phone: userProfileData.phone || '',
         course: userProfileData.program || userProfileData.course || '',
         batch_year: userProfileData.batch_year || '',
         graduation_year: userProfileData.graduation_year || '',
-        date_of_birth: userProfileData.date_of_birth || '',
+        date_of_birth: formatDateForInput(userProfileData.date_of_birth),
         current_job: userProfileData.current_job_title || userProfileData.current_job || '',
         company: userProfileData.current_company || userProfileData.company || '',
         address: userProfileData.address || '',
         city: userProfileData.city || '',
         country: userProfileData.country || 'Philippines',
         postal_code: userProfileData.postal_code || ''
-      });
+      };
+      
+      console.log('Form data being set:', formDataToSet);
+      setFormData(formDataToSet);
 
       if (userProfileData.profile_image_url) {
         setImagePreview(userProfileData.profile_image_url);
@@ -221,18 +257,26 @@ const AlumniProfile = () => {
       try {
         const publicUrl = await uploadProfileImage(file);
 
-        // Update profile with new image URL
+        // Update profile with new image URL - include more fields to ensure upsert works
         const { error: updateError } = await supabase
           .from('user_profiles')
           .upsert({
             user_id: user.id,
+            first_name: formData.first_name || null,
+            last_name: formData.last_name || null,
             profile_image_url: publicUrl,
             updated_at: new Date().toISOString()
-          });
+          }, { onConflict: 'user_id' });
 
         if (updateError) {
           console.error('Error updating profile:', updateError);
-          toast.error('Failed to update profile image');
+          console.error('Update error details:', {
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint,
+            code: updateError.code
+          });
+          toast.error(`Failed to update profile image: ${updateError.message}`);
           return;
         }
 
@@ -263,7 +307,12 @@ const AlumniProfile = () => {
 
       if (error) {
         console.error('Error uploading image:', error);
-        throw error;
+        console.error('Storage error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error
+        });
+        throw new Error(`Storage upload failed: ${error.message}`);
       }
 
       const { data: { publicUrl } } = supabase.storage
@@ -364,7 +413,7 @@ const AlumniProfile = () => {
       course: profile?.program || profile?.course || '',
       batch_year: profile?.batch_year || '',
       graduation_year: profile?.graduation_year || '',
-      date_of_birth: profile?.date_of_birth || '',
+      date_of_birth: formatDateForInput(profile?.date_of_birth),
       current_job: profile?.current_job_title || profile?.current_job || '',
       company: profile?.current_company || profile?.company || '',
       address: profile?.address || '',
@@ -489,7 +538,7 @@ const AlumniProfile = () => {
                     className="form-control"
                   />
                 ) : (
-                  <p className="info-value">{profile?.date_of_birth || 'Not specified'}</p>
+                  <p className="info-value">{formatDateForDisplay(profile?.date_of_birth)}</p>
                 )}
               </div>
               <div className="info-item">
@@ -657,6 +706,21 @@ const AlumniProfile = () => {
               )}
             </div>
             <div className="address-grid">
+              <div className="info-item">
+                <p className="info-label">Address</p>
+                {editing ? (
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="form-control"
+                    placeholder="Enter your full address"
+                  />
+                ) : (
+                  <p className="info-value">{profile?.address || 'Not specified'}</p>
+                )}
+              </div>
               <div className="info-item">
                 <p className="info-label">Country</p>
                 {editing ? (

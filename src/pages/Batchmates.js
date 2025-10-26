@@ -30,19 +30,38 @@ const Batchmates = () => {
         // Load current user's batch year
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('batch_year')
+          .select(`
+            batch_year,
+            user_profiles (batch_year)
+          `)
           .eq('id', user.id)
           .single();
           
         if (userError) console.error('Error loading user batch year:', userError);
-        setCurrentUserBatchYear(userData?.batch_year);
+        // Prefer profile batch_year over users table batch_year - user_profiles is an object, not array
+        const batchYear = userData?.user_profiles?.batch_year || userData?.batch_year;
+        setCurrentUserBatchYear(batchYear);
         
         console.log('🔍 Loading alumni data...');
         
-        // Load ALL alumni from users table
+        // Load ALL alumni from users table with profile data
         const { data, error } = await supabase
           .from('users')
-          .select('*')
+          .select(`
+            *,
+            user_profiles (
+              phone,
+              course,
+              batch_year,
+              graduation_year,
+              current_job,
+              company,
+              address,
+              city,
+              country,
+              profile_image_url
+            )
+          `)
           .eq('is_verified', true)
           .neq('id', user.id)
           .order('created_at', { ascending: false });
@@ -55,26 +74,39 @@ const Batchmates = () => {
         console.log('📊 Raw alumni data from database:', data);
         
         setBatchmates((data || []).map(u => {
+          // Get profile data from user_profiles - it's an object, not an array!
+          const profile = u.user_profiles || {};
+          
+          // Prefer profile data over users table data, then fallback to users table if profile doesn't exist
+          const course = profile.course || u.course || 'Course not specified';
+          const batchYear = profile.batch_year || u.batch_year || 'Not specified';
+          const currentJob = profile.current_job || u.current_job || 'Job not specified';
+          const company = profile.company || u.company || '';
+          const location = `${profile.city || u.city || ''}${profile.country ? ', ' + profile.country : u.country ? ', ' + u.country : ''}`;
+          const profileImage = profile.profile_image_url || u.profile_picture || '/default-avatar.png';
+          
           console.log('Processing user:', {
             name: `${u.first_name} ${u.last_name}`,
-            course: u.course,
-            batch_year: u.batch_year,
-            current_job: u.current_job,
-            company: u.company,
-            location: u.location
+            course,
+            batch_year: batchYear,
+            current_job: currentJob,
+            company,
+            location,
+            profileImage,
+            hasProfile: !!u.user_profiles
           });
           
           return {
             id: u.id,
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'No name',
-            course: u.course || 'Course not specified',
-            location: u.location || 'Location not specified',
-            currentJob: u.current_job || 'Job not specified',
-            company: u.company || '',
-            lastActive: u.last_login_at ? formatLastActive(u.last_login_at) : 'Never logged in',
-            avatar: u.profile_picture || '/default-avatar.png',
+            course,
+            location: location || 'Location not specified',
+            currentJob,
+            company,
+            lastActive: getLastActiveText(u),
+            avatar: profileImage,
             email: u.email,
-            batchYear: u.batch_year || 'Not specified'
+            batchYear
           };
         }));
       } catch (error) {
@@ -111,6 +143,7 @@ const Batchmates = () => {
 
   // Helper function to format last active time
   const formatLastActive = (timestamp) => {
+    if (!timestamp) return null;
     const now = new Date();
     const lastActive = new Date(timestamp);
     const diffInMinutes = Math.floor((now - lastActive) / (1000 * 60));
@@ -119,9 +152,26 @@ const Batchmates = () => {
       return diffInMinutes < 5 ? 'Just now' : `${diffInMinutes}m ago`;
     } else if (diffInMinutes < 1440) { // 24 hours
       return `${Math.floor(diffInMinutes / 60)}h ago`;
-    } else {
+    } else if (diffInMinutes < 10080) { // 7 days
       return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    } else {
+      // Format as date for older entries
+      return lastActive.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
+  };
+  
+  // Helper function to get last active text
+  const getLastActiveText = (user) => {
+    if (user.last_login_at) {
+      return `Active ${formatLastActive(user.last_login_at)}`;
+    } else if (user.updated_at) {
+      const updateTime = formatLastActive(user.updated_at);
+      return `Joined ${updateTime}`;
+    } else if (user.created_at) {
+      const createTime = formatLastActive(user.created_at);
+      return `Member since ${createTime}`;
+    }
+    return 'New member';
   };
   
   // Get connection status with a batchmate

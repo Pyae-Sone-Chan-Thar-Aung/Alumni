@@ -49,7 +49,7 @@ const AdminAnalytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch overview statistics
       const [
         { count: totalAlumni },
@@ -190,17 +190,46 @@ const AdminAnalytics = () => {
         analytics.employment.unemployed,
         analytics.employment.graduateSchool
       ],
-      backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6'],
-      borderWidth: 0
+      backgroundColor: [
+        '#10b981', // Green for Employed
+        '#f59e0b', // Orange for Self-Employed
+        '#ef4444', // Red for Unemployed
+        '#3b82f6'  // Blue for Graduate School
+      ],
+      borderColor: [
+        '#059669', // Darker Green
+        '#d97706', // Darker Orange
+        '#dc2626', // Darker Red
+        '#2563eb'  // Darker Blue
+      ],
+      borderWidth: 2
     }]
   };
 
+  // --- Gender color mapping (male = blue, female = pink) ---
+  const genderColorMap = {
+    male: '#1E90FF',
+    m: '#1E90FF',
+    man: '#1E90FF',
+    female: '#FF69B4',
+    f: '#FF69B4',
+    woman: '#FF69B4'
+  };
+  const getGenderColorForLabel = (label) => {
+    const key = (label || '').toString().toLowerCase().trim();
+    return genderColorMap[key] || '#CBD5E1'; // fallback grey
+  };
+
+  // Replace previous genderChartData with this (keeps labels order from analytics)
+  const genderLabels = Object.keys(analytics.demographics.genderDistribution);
+  const genderValues = Object.values(analytics.demographics.genderDistribution);
   const genderChartData = {
-    labels: Object.keys(analytics.demographics.genderDistribution),
+    labels: genderLabels,
     datasets: [{
-      data: Object.values(analytics.demographics.genderDistribution),
-      backgroundColor: ['#ec4899', '#3b82f6', '#8b5cf6'],
-      borderWidth: 0
+      data: genderValues,
+      backgroundColor: genderLabels.map(getGenderColorForLabel),
+      borderColor: genderLabels.map(getGenderColorForLabel),
+      borderWidth: 2
     }]
   };
 
@@ -211,8 +240,36 @@ const AdminAnalytics = () => {
     datasets: [{
       label: 'Number of Alumni',
       data: cutoffYears.map(year => analytics.demographics.graduationYears[year] || 0),
-      backgroundColor: '#8B0000',
-      borderColor: '#660000',
+      backgroundColor: cutoffYears.map((_, index) => {
+        const colors = [
+          '#e91e63', // UIC Pink
+          '#3b82f6', // Blue
+          '#10b981', // Green
+          '#f59e0b', // Orange
+          '#8b5cf6', // Purple
+          '#ef4444', // Red
+          '#06b6d4', // Cyan
+          '#84cc16', // Lime
+          '#f97316', // Orange Red
+          '#ec4899'  // Pink
+        ];
+        return colors[index % colors.length];
+      }),
+      borderColor: cutoffYears.map((_, index) => {
+        const colors = [
+          '#c2185b', // Darker Pink
+          '#2563eb', // Darker Blue
+          '#059669', // Darker Green
+          '#d97706', // Darker Orange
+          '#7c3aed', // Darker Purple
+          '#dc2626', // Darker Red
+          '#0891b2', // Darker Cyan
+          '#65a30d', // Darker Lime
+          '#ea580c', // Darker Orange Red
+          '#db2777'  // Darker Pink
+        ];
+        return colors[index % colors.length];
+      }),
       borderWidth: 2
     }]
   };
@@ -266,8 +323,8 @@ const AdminAnalytics = () => {
           <div className="header-actions">
             <div className="date-filter">
               <FaFilter />
-              <select 
-                value={dateRange} 
+              <select
+                value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
                 className="filter-select"
               >
@@ -319,7 +376,7 @@ const AdminAnalytics = () => {
               <h3>{analytics.employment.employed + analytics.employment.selfEmployed}</h3>
               <p>Currently Employed</p>
               <span className="card-trend positive">
-                {(((analytics.employment.employed + analytics.employment.selfEmployed) / 
+                {(((analytics.employment.employed + analytics.employment.selfEmployed) /
                   (analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}% employment rate
               </span>
             </div>
@@ -346,8 +403,8 @@ const AdminAnalytics = () => {
               <div className="chart-header">
                 <h3>Employment Status</h3>
                 <div className="chart-range">
-                  {['Year','Month'].map(r => (
-                    <button key={r} className={`tab ${chartRange===r?'active':''}`} onClick={()=>setChartRange(r)}>{r}</button>
+                  {['Year', 'Month'].map(r => (
+                    <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
                   ))}
                 </div>
               </div>
@@ -361,8 +418,8 @@ const AdminAnalytics = () => {
               <div className="chart-header">
                 <h3>Gender Distribution</h3>
                 <div className="chart-range">
-                  {['Year','Month'].map(r => (
-                    <button key={r} className={`tab ${chartRange===r?'active':''}`} onClick={()=>setChartRange(r)}>{r}</button>
+                  {['Year', 'Month'].map(r => (
+                    <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
                   ))}
                 </div>
               </div>
@@ -378,8 +435,8 @@ const AdminAnalytics = () => {
               <div className="chart-header">
                 <h3>Alumni by Graduation Year</h3>
                 <div className="chart-range">
-                  {['5y','10y','20y','All'].map(r => (
-                    <button key={r} className={`tab ${gradYearsFilter===r?'active':''}`} onClick={()=>setGradYearsFilter(r)}>{r}</button>
+                  {['5y', '10y', '20y', 'All'].map(r => (
+                    <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
                   ))}
                 </div>
               </div>
@@ -413,14 +470,14 @@ const AdminAnalytics = () => {
               <div className="stat-item">
                 <span className="stat-label">Employment Rate</span>
                 <span className="stat-value">
-                  {(((analytics.employment.employed + analytics.employment.selfEmployed) / 
+                  {(((analytics.employment.employed + analytics.employment.selfEmployed) /
                     Math.max(1, analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Self-Employment Rate</span>
                 <span className="stat-value">
-                  {((analytics.employment.selfEmployed / 
+                  {((analytics.employment.selfEmployed /
                     Math.max(1, analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}%
                 </span>
               </div>
@@ -461,7 +518,7 @@ const AdminAnalytics = () => {
             {Object.entries(analytics.demographics.ageGroups).map(([ageGroup, count]) => (
               <div key={ageGroup} className="age-group-item">
                 <div className="age-group-bar">
-                  <div 
+                  <div
                     className="age-group-fill"
                     style={{
                       width: `${(count / Math.max(...Object.values(analytics.demographics.ageGroups))) * 100}%`

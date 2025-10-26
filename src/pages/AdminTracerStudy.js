@@ -454,8 +454,36 @@ const AdminTracerStudy = () => {
     datasets: [{
       label: 'Number of Graduates',
       data: analytics.topIndustries.slice(0, 10).map(i => i.count),
-      backgroundColor: '#8B0000',
-      borderColor: '#660000',
+      backgroundColor: analytics.topIndustries.slice(0, 10).map((_, index) => {
+        const colors = [
+          '#e91e63', // UIC Pink
+          '#3b82f6', // Blue
+          '#10b981', // Green
+          '#f59e0b', // Orange
+          '#8b5cf6', // Purple
+          '#ef4444', // Red
+          '#06b6d4', // Cyan
+          '#84cc16', // Lime
+          '#f97316', // Orange Red
+          '#ec4899'  // Pink
+        ];
+        return colors[index % colors.length];
+      }),
+      borderColor: analytics.topIndustries.slice(0, 10).map((_, index) => {
+        const colors = [
+          '#c2185b', // Darker Pink
+          '#2563eb', // Darker Blue
+          '#059669', // Darker Green
+          '#d97706', // Darker Orange
+          '#7c3aed', // Darker Purple
+          '#dc2626', // Darker Red
+          '#0891b2', // Darker Cyan
+          '#65a30d', // Darker Lime
+          '#ea580c', // Darker Orange Red
+          '#db2777'  // Darker Pink
+        ];
+        return colors[index % colors.length];
+      }),
       borderWidth: 2
     }]
   };
@@ -633,6 +661,15 @@ const AdminTracerStudy = () => {
     return stats;
   };
 
+  // Gender color mapping
+  const genderColorMap = {
+    male: '#1E90FF',
+    m: '#1E90FF',
+    female: '#FF69B4',
+    f: '#FF69B4'
+  };
+  const getGenderColors = (labels = []) => labels.map(lbl => genderColorMap[(lbl || '').toString().toLowerCase().trim()] || '#CBD5E1');
+
   if (loading) {
     return <LoadingSpinner size="large" message="Loading tracer study data..." fullscreen />;
   }
@@ -688,8 +725,8 @@ const AdminTracerStudy = () => {
                   <p className="mb-0">{error}</p>
                 </div>
               </div>
-              <button 
-                className="btn btn-outline-danger btn-sm mt-3" 
+              <button
+                className="btn btn-outline-danger btn-sm mt-3"
                 onClick={() => {
                   setError('');
                   fetchTracerStudyData();
@@ -759,7 +796,7 @@ const AdminTracerStudy = () => {
                   </div>
                   <div className="metric-content">
                     <div className="metric-value">
-                      {getResponseStats().employed > 0 
+                      {getResponseStats().employed > 0
                         ? Math.round((getResponseStats().employed / responses.length) * 100)
                         : 0}%
                     </div>
@@ -774,7 +811,7 @@ const AdminTracerStudy = () => {
                   </div>
                   <div className="metric-content">
                     <div className="metric-value">
-                      {responses.length > 0 
+                      {responses.length > 0
                         ? new Set(responses.map(r => r.graduation_year).filter(Boolean)).size
                         : 0}
                     </div>
@@ -789,7 +826,7 @@ const AdminTracerStudy = () => {
                   </div>
                   <div className="metric-content">
                     <div className="metric-value">
-                      {responses.length > 0 
+                      {responses.length > 0
                         ? Math.round((responses.filter(r => r.monthly_salary).length / responses.length) * 100)
                         : 0}%
                     </div>
@@ -824,12 +861,12 @@ const AdminTracerStudy = () => {
                     <div className="metric-value">{analytics.curriculumRelevance.yes}</div>
                     <div className="metric-label">Found Helpful</div>
                     <div className="metric-bar">
-                      <div 
-                        className="metric-fill" 
-                        style={{ 
-                          width: `${analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no > 0 
-                            ? (analytics.curriculumRelevance.yes / (analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no)) * 100 
-                            : 0}%` 
+                      <div
+                        className="metric-fill"
+                        style={{
+                          width: `${analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no > 0
+                            ? (analytics.curriculumRelevance.yes / (analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no)) * 100
+                            : 0}%`
                         }}
                       ></div>
                     </div>
@@ -838,12 +875,12 @@ const AdminTracerStudy = () => {
                     <div className="metric-value">{analytics.curriculumRelevance.no}</div>
                     <div className="metric-label">Needs Improvement</div>
                     <div className="metric-bar">
-                      <div 
-                        className="metric-fill" 
-                        style={{ 
-                          width: `${analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no > 0 
-                            ? (analytics.curriculumRelevance.no / (analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no)) * 100 
-                            : 0}%` 
+                      <div
+                        className="metric-fill"
+                        style={{
+                          width: `${analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no > 0
+                            ? (analytics.curriculumRelevance.no / (analytics.curriculumRelevance.yes + analytics.curriculumRelevance.no)) * 100
+                            : 0}%`
                         }}
                       ></div>
                     </div>
@@ -861,10 +898,10 @@ const AdminTracerStudy = () => {
                         <span className="method-count">{method.count} graduates</span>
                       </div>
                       <div className="method-progress">
-                        <div 
-                          className="method-bar" 
-                          style={{ 
-                            width: `${responses.length > 0 ? (method.count / responses.length) * 100 : 0}%` 
+                        <div
+                          className="method-bar"
+                          style={{
+                            width: `${responses.length > 0 ? (method.count / responses.length) * 100 : 0}%`
                           }}
                         ></div>
                       </div>
@@ -934,7 +971,7 @@ const AdminTracerStudy = () => {
                 const email = response.email || response.users?.email || 'N/A';
                 const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'NA';
                 const submittedDate = response.updated_at || response.created_at;
-                
+
                 return (
                   <div className="table-row" role="row" key={response.id}>
                     <div>
@@ -1019,8 +1056,8 @@ const AdminTracerStudy = () => {
               {searchTerm || statusFilter !== 'all' || graduationYearFilter !== 'all' ? (
                 <>
                   <p>No results match your current search criteria.</p>
-                  <button 
-                    className="btn btn-outline-primary" 
+                  <button
+                    className="btn btn-outline-primary"
                     onClick={() => {
                       setSearchTerm('');
                       setStatusFilter('all');

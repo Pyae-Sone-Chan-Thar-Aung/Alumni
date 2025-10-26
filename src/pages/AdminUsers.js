@@ -79,6 +79,15 @@ const AdminUsers = () => {
           // Process fallback data with proper placeholders
           const processedUsers = (fallbackData || []).map(u => {
             const profile = u.user_profiles?.[0] || {};
+            console.log('🔍 Processing fallback user:', {
+              name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+              email: u.email,
+              course: profile.program,
+              profileImage: profile.profile_image_url,
+              profileData: profile,
+              userData: u
+            });
+            
             return {
               id: u.id,
               firstName: u.first_name || '',
@@ -120,32 +129,42 @@ const AdminUsers = () => {
         }
         
         // Process view data with proper placeholders
-        const processedUsers = usersData.map(u => ({
-          id: u.id,
-          firstName: u.first_name || '',
-          lastName: u.last_name || '',
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || '—',
-          email: u.email || '—',
-          course: u.course || u.program || '—',  // Handle both column names
-          batch: u.batch_year || '—',
-          graduationYear: u.graduation_year || '—',
-          status: u.approval_status || (u.is_verified ? 'approved' : 'pending'),
-          registrationDate: u.registration_date?.slice(0,10) || u.user_created_at?.slice(0,10) || '—',
-          joinedDate: u.user_created_at?.slice(0,10) || '—',
-          lastActive: 'Never', // View doesn't include last_login
-          phone: u.phone || '—',
-          address: u.address || '—',
-          city: u.city || '—',
-          country: u.country || '—',
-          currentJob: u.current_job || '—',
-          company: u.company || '—',
-          profileImage: u.profile_image_url || null,
-          role: u.role || 'alumni',
-          isVerified: u.is_verified || false,
-          isActive: true, // Assume active if in view
-          approvedAt: u.approved_at,
-          bio: ''
-        }));
+        const processedUsers = usersData.map(u => {
+          console.log('🔍 Processing user:', {
+            name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+            email: u.email,
+            course: u.course || u.program,
+            profileImage: u.profile_image_url,
+            rawData: u
+          });
+          
+          return {
+            id: u.id,
+            firstName: u.first_name || '',
+            lastName: u.last_name || '',
+            name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || '—',
+            email: u.email || '—',
+            course: u.course || u.program || '—',  // Handle both column names
+            batch: u.batch_year || '—',
+            graduationYear: u.graduation_year || '—',
+            status: u.approval_status || (u.is_verified ? 'approved' : 'pending'),
+            registrationDate: u.registration_date?.slice(0,10) || u.user_created_at?.slice(0,10) || '—',
+            joinedDate: u.user_created_at?.slice(0,10) || '—',
+            lastActive: 'Never', // View doesn't include last_login
+            phone: u.phone || '—',
+            address: u.address || '—',
+            city: u.city || '—',
+            country: u.country || '—',
+            currentJob: u.current_job || '—',
+            company: u.company || '—',
+            profileImage: u.profile_image_url || null,
+            role: u.role || 'alumni',
+            isVerified: u.is_verified || false,
+            isActive: true, // Assume active if in view
+            approvedAt: u.approved_at,
+            bio: ''
+          };
+        });
         
         console.log(`✅ Found ${usersData.length} users`);
         console.log(`📋 Final processed users:`, processedUsers);
@@ -474,12 +493,22 @@ const AdminUsers = () => {
                         <div className="user-info">
                           <div className="user-avatar">
                             {user.profileImage ? (
-                              <img src={user.profileImage} alt={user.name} />
-                            ) : (
-                              <div className="avatar-placeholder">
-                                {getUserInitials(user.firstName, user.lastName, user.email)}
-                              </div>
-                            )}
+                              <img 
+                                src={user.profileImage} 
+                                alt={user.name}
+                                onError={(e) => {
+                                  console.log('❌ Image failed to load:', user.profileImage, 'for user:', user.name);
+                                  e.target.style.display = 'none';
+                                  e.target.nextElementSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className="avatar-placeholder"
+                              style={{ display: user.profileImage ? 'none' : 'flex' }}
+                            >
+                              {getUserInitials(user.firstName, user.lastName, user.email)}
+                            </div>
                           </div>
                           <span className="user-name">{user.name}</span>
                         </div>

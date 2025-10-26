@@ -15,40 +15,43 @@ const AdminPendingRegistrations = () => {
     fetchPendingRegistrations();
   }, []);
 
+  // Helper: move uploaded image from temp/<file> to <userId>/<file>
+  const moveImageFromTempToUser = async (userId, imageUrl) => {
+    try {
+      if (!imageUrl || !userId) return { publicUrl: imageUrl };
+      const marker = '/object/public/alumni-profiles/';
+      const idx = imageUrl.indexOf(marker);
+      if (idx === -1) return { publicUrl: imageUrl };
+      const oldPath = imageUrl.substring(idx + marker.length); // e.g., temp/filename.jpg
+      if (!oldPath.startsWith('temp/')) return { publicUrl: imageUrl }; // nothing to move
+      const fileName = oldPath.split('/').pop();
+      const newPath = `${userId}/${fileName}`;
+
+      const { error: copyErr } = await supabase.storage
+        .from('alumni-profiles')
+        .copy(oldPath, newPath);
+      if (copyErr) throw copyErr;
+
+      await supabase.storage.from('alumni-profiles').remove([oldPath]).catch(() => {});
+      const { data: { publicUrl } } = supabase.storage
+        .from('alumni-profiles')
+        .getPublicUrl(newPath);
+      return { publicUrl, newPath };
+    } catch (e) {
+      console.warn('Image move failed, continuing with original URL:', e?.message);
+      return { publicUrl: imageUrl };
+    }
+  };
+
   const fetchPendingRegistrations = async () => {
     try {
-      console.log('🔍 Fetching pending registrations...');
-      
-      // Try to get pending users with profiles in one query
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          user_profiles (
-            phone,
-            course,
-            batch_year,
-            graduation_year,
-            current_job,
-            company,
-            address,
-            city,
-            country,
-            profile_image_url
-          )
-        `)
-        .eq('approval_status', 'pending')
-        .order('created_at', { ascending: false });
+      console.log('🔍 Fetching pending registrations (users + pending_registrations)...');
 
-      if (usersError) {
-        console.error('Error fetching pending users:', usersError);
-        
-        // Fallback: try with is_verified column if approval_status doesn't exist
-        console.log('🔄 Trying fallback query with is_verified...');
-        const { data: fallbackUsers, error: fallbackError } = await supabase
+      const [usersRes, pendRes] = await Promise.all([
+        supabase
           .from('users')
           .select(`
-            *,
+            id, email, first_name, last_name, registration_date, approval_status, created_at,
             user_profiles (
               phone,
               course,
@@ -62,23 +65,76 @@ const AdminPendingRegistrations = () => {
               profile_image_url
             )
           `)
-          .eq('is_verified', false)
-          .order('created_at', { ascending: false });
-        
-        if (fallbackError) {
-          console.error('Fallback query also failed:', fallbackError);
-          toast.error('Failed to load pending registrations. Please check database connection.');
-          return;
-        }
-        
-        console.log(`📋 Found ${fallbackUsers?.length || 0} pending users (fallback)`);
-        setPendingRegistrations(fallbackUsers || []);
-        return;
-      }
+          .eq('approval_status', 'pending')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('pending_registrations')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+      ]);
 
-      console.log(`📋 Found ${users?.length || 0} pending users`);
-      setPendingRegistrations(users || []);
-      
+      const users = usersRes.data || [];
+      const pendings = pendRes.data || [];
+
+      const pendingByEmail = new Map(pendings.map(p => [p.email, p]));
+
+      // Normalize user-based pending items
+      const normalizedUsers = users.map(u => {
+        const prof = (u.user_profiles && u.user_profiles[0]) || {};
+        const p = pendingByEmail.get(u.email);
+        return {
+          kind: 'user',
+          id: u.id,
+          email: u.email,
+          first_name: u.first_name,
+          last_name: u.last_name,
+          registration_date: u.registration_date || u.created_at,
+          profile: {
+            phone: prof.phone || p?.phone || null,
+            course: prof.course || p?.course || null,
+            batch_year: prof.batch_year || p?.batch_year || null,
+            graduation_year: prof.graduation_year || p?.graduation_year || null,
+            current_job: prof.current_job || p?.current_job || null,
+            company: prof.company || p?.company || null,
+            address: prof.address || p?.address || null,
+            city: prof.city || p?.city || null,
+            country: prof.country || p?.country || null,
+            profile_image_url: prof.profile_image_url || p?.profile_image_url || null
+          },
+          pendingId: p?.id || null
+        };
+      });
+
+      // Add pending-only items (no users row yet)
+      const userEmails = new Set(users.map(u => u.email));
+      const normalizedPendingOnly = pendings
+        .filter(p => !userEmails.has(p.email))
+        .map(p => ({
+          kind: 'pendingOnly',
+          id: p.id,
+          email: p.email,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          registration_date: p.created_at,
+          profile: {
+            phone: p.phone || null,
+            course: p.course || null,
+            batch_year: p.batch_year || null,
+            graduation_year: p.graduation_year || null,
+            current_job: p.current_job || null,
+            company: p.company || null,
+            address: p.address || null,
+            city: p.city || null,
+            country: p.country || null,
+            profile_image_url: p.profile_image_url || null
+          },
+          pendingId: p.id
+        }));
+
+      const combined = [...normalizedUsers, ...normalizedPendingOnly];
+      console.log(`📋 Combined pending items: ${combined.length}`);
+      setPendingRegistrations(combined);
     } catch (error) {
       console.error('Unexpected error:', error);
       toast.error('Failed to load pending registrations');
@@ -86,98 +142,106 @@ const AdminPendingRegistrations = () => {
       setLoading(false);
     }
   };
+  const handleApproval = async (item, approve) => {
+    setProcessingId(item.id);
 
-  const handleApproval = async (userId, approve) => {
-    setProcessingId(userId);
-    
     try {
       if (approve) {
-        // First, get the pending registration data
-        const { data: pendingData, error: fetchError } = await supabase
-          .from('pending_registrations')
-          .select('*')
-          .eq('email', userId) // Assuming userId is actually the email in this context
-          .single();
+        if (item.kind === 'user') {
+          // Get pending registration data if available
+          let pendingData = null;
+          if (item.pendingId) {
+            const { data: pendingRes } = await supabase
+              .from('pending_registrations')
+              .select('*')
+              .eq('id', item.pendingId)
+              .single();
+            pendingData = pendingRes;
+          }
 
-        if (fetchError && !fetchError.message.includes('does not exist')) {
-          console.error('Error fetching pending registration:', fetchError);
-        }
+          // Approve existing app user and update with pending data
+          const updateData = {
+            approval_status: 'approved',
+            is_verified: true,
+            approved_at: new Date().toISOString()
+          };
 
-        // Update user approval status and transfer data from pending registration
-        const updateData = {
-          approval_status: 'approved',
-          is_verified: true,
-          approved_at: new Date().toISOString()
-        };
+          // Add course information from pending data
+          if (pendingData?.course) {
+            updateData.course = pendingData.course;
+          }
 
-        // If we have pending registration data, transfer it to the users table
-        if (pendingData) {
-          updateData.batch_year = pendingData.batch_year;
-          updateData.course = pendingData.course;
-          updateData.current_job = pendingData.current_job;
-          updateData.company = pendingData.company;
-          updateData.location = pendingData.city ? `${pendingData.city}, ${pendingData.country}` : pendingData.country;
-        }
+          const { error: userUpdateError } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', item.id);
+          if (userUpdateError) throw userUpdateError;
 
-        const { error: userUpdateError } = await supabase
-          .from('users')
-          .update(updateData)
-          .eq('id', userId);
+          // If we have pending data, move image and upsert profile
+          if (item.pendingId || item.profile || pendingData) {
+            let imageUrl = item.profile?.profile_image_url || pendingData?.profile_image_url || null;
+            if (imageUrl && imageUrl.includes('/temp/')) {
+              const moved = await moveImageFromTempToUser(item.id, imageUrl);
+              imageUrl = moved.publicUrl;
+            }
 
-        if (userUpdateError) {
-          throw userUpdateError;
-        }
+            // Use pending data if available, otherwise use profile data
+            const sourceData = pendingData || item.profile || {};
 
-        // Update pending registrations table
-        const { error: pendingUpdateError } = await supabase
-          .from('pending_registrations')
-          .update({
-            status: 'approved',
-            processed_at: new Date().toISOString()
-          })
-          .eq('email', userId);
+            await supabase
+              .from('user_profiles')
+              .upsert({
+                user_id: item.id,
+                phone: sourceData.phone || null,
+                program: sourceData.course || null, // Map course to program
+                course: sourceData.course || null,
+                batch_year: sourceData.batch_year || null,
+                graduation_year: sourceData.graduation_year || null,
+                current_job_title: sourceData.current_job || null,
+                current_company: sourceData.company || null,
+                current_job: sourceData.current_job || null,
+                company: sourceData.company || null,
+                address: sourceData.address || null,
+                city: sourceData.city || null,
+                country: sourceData.country || null,
+                profile_image_url: imageUrl || null,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'user_id' });
 
-        // Don't fail if pending_registrations table doesn't exist
-        if (pendingUpdateError && !pendingUpdateError.message.includes('does not exist')) {
-          console.error('Error updating pending registration:', pendingUpdateError);
+            if (item.pendingId) {
+              await supabase
+                .from('pending_registrations')
+                .update({ status: 'approved', processed_at: new Date().toISOString() })
+                .eq('id', item.pendingId);
+            }
+          }
+        } else {
+          // Approve pending-only record (no users row yet)
+          await supabase
+            .from('pending_registrations')
+            .update({ status: 'approved', processed_at: new Date().toISOString() })
+            .eq('id', item.pendingId || item.id);
         }
       } else {
-        // For rejection, just update the status
-        const { error: userUpdateError } = await supabase
-          .from('users')
-          .update({
-            approval_status: 'rejected',
-            is_verified: false,
-            approved_at: null
-          })
-          .eq('id', userId);
-
-        if (userUpdateError) {
-          throw userUpdateError;
+        // Reject
+        if (item.kind === 'user') {
+          await supabase
+            .from('users')
+            .update({ approval_status: 'rejected', is_verified: false, approved_at: null })
+            .eq('id', item.id);
         }
-
-        // Update pending registrations table
-        const { error: pendingUpdateError } = await supabase
-          .from('pending_registrations')
-          .update({
-            status: 'rejected',
-            processed_at: new Date().toISOString()
-          })
-          .eq('email', userId);
-
-        // Don't fail if pending_registrations table doesn't exist
-        if (pendingUpdateError && !pendingUpdateError.message.includes('does not exist')) {
-          console.error('Error updating pending registration:', pendingUpdateError);
+        if (item.pendingId || item.kind === 'pendingOnly') {
+          await supabase
+            .from('pending_registrations')
+            .update({ status: 'rejected', processed_at: new Date().toISOString() })
+            .eq('id', item.pendingId || item.id);
         }
       }
 
       toast.success(`Registration ${approve ? 'approved' : 'rejected'} successfully!`);
-      
-      // Refresh the list
-      fetchPendingRegistrations();
+      await fetchPendingRegistrations();
       setShowModal(false);
       setSelectedRegistration(null);
-      
     } catch (error) {
       console.error('Error processing approval:', error);
       toast.error(`Failed to ${approve ? 'approve' : 'reject'} registration`);
@@ -235,12 +299,12 @@ const AdminPendingRegistrations = () => {
       ) : (
         <div className="registrations-grid">
           {pendingRegistrations.map((registration) => (
-            <div key={registration.id} className="registration-card">
+            <div key={`${registration.kind}:${registration.id}`} className="registration-card">
               <div className="card-header">
                 <div className="user-info">
-                  {registration.user_profiles?.[0]?.profile_image_url ? (
+                  {registration.profile?.profile_image_url ? (
                     <img 
-                      src={registration.user_profiles[0].profile_image_url} 
+                      src={registration.profile.profile_image_url} 
                       alt="Profile" 
                       className="profile-image"
                     />
@@ -263,19 +327,19 @@ const AdminPendingRegistrations = () => {
                 <div className="info-grid">
                   <div className="info-item">
                     <FaGraduationCap />
-                    <span>{registration.user_profiles?.[0]?.course || 'N/A'}</span>
+                    <span>{registration.profile?.course || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <FaPhone />
-                    <span>{registration.user_profiles?.[0]?.phone || 'N/A'}</span>
+                    <span>{registration.profile?.phone || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <FaBuilding />
-                    <span>{registration.user_profiles?.[0]?.company || 'N/A'}</span>
+                    <span>{registration.profile?.company || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <FaMapMarkerAlt />
-                    <span>{registration.user_profiles?.[0]?.city || 'N/A'}</span>
+                    <span>{registration.profile?.city || 'N/A'}</span>
                   </div>
                 </div>
               </div>
@@ -288,7 +352,7 @@ const AdminPendingRegistrations = () => {
                   <FaEye /> View Details
                 </button>
                 <button
-                  onClick={() => handleApproval(registration.id, false)}
+                  onClick={() => handleApproval(registration, false)}
                   className="btn btn-danger"
                   disabled={processingId === registration.id}
                 >
@@ -296,7 +360,7 @@ const AdminPendingRegistrations = () => {
                   Reject
                 </button>
                 <button
-                  onClick={() => handleApproval(registration.id, true)}
+                  onClick={() => handleApproval(registration, true)}
                   className="btn btn-success"
                   disabled={processingId === registration.id}
                 >
@@ -325,9 +389,9 @@ const AdminPendingRegistrations = () => {
 
             <div className="modal-body">
               <div className="profile-section">
-                {selectedRegistration.user_profiles?.[0]?.profile_image_url ? (
+                {selectedRegistration.profile?.profile_image_url ? (
                   <img 
-                    src={selectedRegistration.user_profiles[0].profile_image_url} 
+                    src={selectedRegistration.profile.profile_image_url} 
                     alt="Profile" 
                     className="modal-profile-image"
                   />
@@ -348,7 +412,7 @@ const AdminPendingRegistrations = () => {
                   </div>
                   <div className="detail-item">
                     <FaPhone />
-                    <span>Phone: {selectedRegistration.user_profiles?.[0]?.phone || 'N/A'}</span>
+                    <span>Phone: {selectedRegistration.profile?.phone || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -356,13 +420,13 @@ const AdminPendingRegistrations = () => {
                   <h4>Academic Information</h4>
                   <div className="detail-item">
                     <FaGraduationCap />
-                    <span>Course: {selectedRegistration.user_profiles?.[0]?.course || 'N/A'}</span>
+                    <span>Course: {selectedRegistration.profile?.course || 'N/A'}</span>
                   </div>
                   <div className="detail-item">
-                    <span>Batch Year: {selectedRegistration.user_profiles?.[0]?.batch_year || 'N/A'}</span>
+                    <span>Batch Year: {selectedRegistration.profile?.batch_year || 'N/A'}</span>
                   </div>
                   <div className="detail-item">
-                    <span>Graduation Year: {selectedRegistration.user_profiles?.[0]?.graduation_year || 'N/A'}</span>
+                    <span>Graduation Year: {selectedRegistration.profile?.graduation_year || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -370,10 +434,10 @@ const AdminPendingRegistrations = () => {
                   <h4>Professional Information</h4>
                   <div className="detail-item">
                     <FaBuilding />
-                    <span>Current Job: {selectedRegistration.user_profiles?.[0]?.current_job || 'N/A'}</span>
+                    <span>Current Job: {selectedRegistration.profile?.current_job || 'N/A'}</span>
                   </div>
                   <div className="detail-item">
-                    <span>Company: {selectedRegistration.user_profiles?.[0]?.company || 'N/A'}</span>
+                    <span>Company: {selectedRegistration.profile?.company || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -381,13 +445,13 @@ const AdminPendingRegistrations = () => {
                   <h4>Address Information</h4>
                   <div className="detail-item">
                     <FaMapMarkerAlt />
-                    <span>Address: {selectedRegistration.user_profiles?.[0]?.address || 'N/A'}</span>
+                    <span>Address: {selectedRegistration.profile?.address || 'N/A'}</span>
                   </div>
                   <div className="detail-item">
-                    <span>City: {selectedRegistration.user_profiles?.[0]?.city || 'N/A'}</span>
+                    <span>City: {selectedRegistration.profile?.city || 'N/A'}</span>
                   </div>
                   <div className="detail-item">
-                    <span>Country: {selectedRegistration.user_profiles?.[0]?.country || 'N/A'}</span>
+                    <span>Country: {selectedRegistration.profile?.country || 'N/A'}</span>
                   </div>
                 </div>
               </div>
@@ -395,7 +459,7 @@ const AdminPendingRegistrations = () => {
 
             <div className="modal-actions">
               <button
-                onClick={() => handleApproval(selectedRegistration.id, false)}
+                onClick={() => handleApproval(selectedRegistration, false)}
                 className="btn btn-danger"
                 disabled={processingId === selectedRegistration.id}
               >
@@ -403,7 +467,7 @@ const AdminPendingRegistrations = () => {
                 Reject Registration
               </button>
               <button
-                onClick={() => handleApproval(selectedRegistration.id, true)}
+                onClick={() => handleApproval(selectedRegistration, true)}
                 className="btn btn-success"
                 disabled={processingId === selectedRegistration.id}
               >

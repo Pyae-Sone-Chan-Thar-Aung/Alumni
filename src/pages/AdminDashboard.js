@@ -79,6 +79,8 @@ const AdminDashboard = () => {
       // Analytics data (range-limited when possible)
       { data: tracerData, error: tracerDataError },
       { data: userProfiles, error: userProfilesError },
+      // Pending registrations (to enrich pending users)
+      { data: pendingRegs },
       // Pending created in current/previous periods
       { count: pendingCurr },
       { count: pendingPrev },
@@ -105,6 +107,8 @@ const AdminDashboard = () => {
       // Analytics detail
       supabase.from('tracer_study_responses').select('employment_status, graduation_year, gender, created_at').gte('created_at', startISO).lt('created_at', endISO),
       supabase.from('user_profiles').select('graduation_year'),
+      // Pending registrations to merge details by email
+      supabase.from('pending_registrations').select('email, phone, course, batch_year, graduation_year, current_job, company, address, city, country, profile_image_url, status').eq('status', 'pending'),
 
       // Pending created counts (for trend)
       supabase
@@ -173,6 +177,7 @@ const AdminDashboard = () => {
 
     let processedPending = [];
 
+    const pendingRegMap = new Map((pendingRegs || []).map(r => [String(r.email || '').toLowerCase().trim(), r]));
     if (pendingUsersError) {
       console.warn('⚠️ user_management_view not available, falling back to users+profiles');
       // Fallback: get pending users directly from users table and left join profile client-side
@@ -186,41 +191,45 @@ const AdminDashboard = () => {
         const profileMap = new Map((profilesRaw || []).map(p => [p.user_id, p]));
         processedPending = (pendingUsersRaw || []).map(u => {
           const p = profileMap.get(u.id) || {};
+          const r = pendingRegMap.get(String(u.email || '').toLowerCase().trim()) || {};
           return {
             id: u.id,
-            first_name: u.first_name || p.first_name || '',
-            last_name: u.last_name || p.last_name || '',
+            first_name: u.first_name || r.first_name || p.first_name || '',
+            last_name: u.last_name || r.last_name || p.last_name || '',
             email: u.email,
             created_at: u.registration_date || u.created_at,
-            program: p.course || null,
-            graduation_year: p.graduation_year || null,
-            current_job: p.current_job || null,
-            company: p.company || null,
-            phone: p.phone || null,
-            address: p.address || null,
-            city: p.city || null,
-            country: p.country || null,
-            profile_image_url: p.profile_image_url || null
+            program: r.course || p.course || u.course || null,
+            graduation_year: r.graduation_year || p.graduation_year || null,
+            current_job: r.current_job || p.current_job || null,
+            company: r.company || p.company || null,
+            phone: r.phone || p.phone || null,
+            address: r.address || p.address || null,
+            city: r.city || p.city || null,
+            country: r.country || p.country || null,
+            profile_image_url: r.profile_image_url || p.profile_image_url || null
           };
         });
       }
     } else {
-      processedPending = (pendingUsersView || []).map(u => ({
-        id: u.id,
-        first_name: u.first_name,
-        last_name: u.last_name,
-        email: u.email,
-        created_at: u.registration_date || u.user_created_at,
-        program: u.course,
-        graduation_year: u.graduation_year,
-        current_job: u.current_job,
-        company: u.company,
-        phone: u.phone,
-        address: u.address,
-        city: u.city,
-        country: u.country,
-        profile_image_url: u.profile_image_url
-      }));
+      processedPending = (pendingUsersView || []).map(u => {
+        const r = pendingRegMap.get(String(u.email || '').toLowerCase().trim()) || {};
+        return {
+          id: u.id,
+          first_name: u.first_name || r.first_name || '',
+          last_name: u.last_name || r.last_name || '',
+          email: u.email,
+          created_at: u.registration_date || u.user_created_at,
+          program: r.course || u.course || null,
+          graduation_year: r.graduation_year || u.graduation_year || null,
+          current_job: r.current_job || u.current_job || null,
+          company: r.company || u.company || null,
+          phone: r.phone || u.phone || null,
+          address: r.address || u.address || null,
+          city: r.city || u.city || null,
+          country: r.country || u.country || null,
+          profile_image_url: r.profile_image_url || u.profile_image_url || null
+        };
+      });
     }
 
     console.log(`🕰️ Found ${processedPending.length} pending users for dashboard`);
@@ -333,6 +342,76 @@ const AdminDashboard = () => {
       }
 
       if (isApproved) {
+        // Try to import details from pending_registrations and move image out of temp
+        const moveImageFromTempToUser = async (imageUrl) => {
+          try {
+            if (!imageUrl) return imageUrl;
+            const marker = '/object/public/alumni-profiles/';
+            const idx = imageUrl.indexOf(marker);
+            if (idx === -1) return imageUrl;
+            const oldPath = imageUrl.substring(idx + marker.length);
+            if (!oldPath.startsWith('temp/')) return imageUrl;
+            const fileName = oldPath.split('/').pop();
+            const newPath = `${userId}/${fileName}`;
+            const { error: copyErr } = await supabase.storage
+              .from('alumni-profiles')
+              .copy(oldPath, newPath);
+            if (copyErr) throw copyErr;
+            await supabase.storage.from('alumni-profiles').remove([oldPath]).catch(() => {});
+            const { data: { publicUrl } } = supabase.storage
+              .from('alumni-profiles')
+              .getPublicUrl(newPath);
+            return publicUrl;
+          } catch (e) {
+            console.warn('Image move skipped:', e?.message);
+            return imageUrl;
+          }
+        };
+
+        try {
+          let { data: pending } = await supabase
+            .from('pending_registrations')
+            .select('*')
+            .eq('email', userRow?.email || '')
+            .maybeSingle();
+          if (!pending) {
+            const { data: pend2 } = await supabase
+              .from('pending_registrations')
+              .select('*')
+              .ilike('email', userRow?.email || '')
+              .maybeSingle();
+            pending = pend2 || null;
+          }
+          if (pending) {
+            const imageUrl = await moveImageFromTempToUser(pending.profile_image_url);
+            await supabase
+              .from('user_profiles')
+              .upsert({
+                user_id: userId,
+                first_name: userRow?.first_name || null,
+                last_name: userRow?.last_name || null,
+                phone: pending.phone || null,
+                course: pending.course || null,
+                batch_year: pending.batch_year || null,
+                graduation_year: pending.graduation_year || null,
+                current_job: pending.current_job || null,
+                company: pending.company || null,
+                address: pending.address || null,
+                city: pending.city || null,
+                country: pending.country || null,
+                profile_image_url: imageUrl || null,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'user_id' });
+
+            await supabase
+              .from('pending_registrations')
+              .update({ status: 'approved', processed_at: new Date().toISOString() })
+              .eq('id', pending.id);
+          }
+        } catch (e) {
+          console.warn('Pending details import failed:', e?.message);
+        }
+
         toast.success(`${(userRow?.first_name || '')} ${(userRow?.last_name || '')} has been approved!`);
       } else {
         toast.success(`Registration for ${(userRow?.first_name || '')} ${(userRow?.last_name || '')} has been rejected.`);
@@ -376,17 +455,42 @@ const AdminDashboard = () => {
         Math.round((analytics.employment.unemployed || 0) * mult),
         Math.round((analytics.employment.graduateSchool || 0) * mult)
       ],
-      backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6'],
-      borderWidth: 0
+      backgroundColor: [
+        '#10b981', // Green for Employed
+        '#f59e0b', // Orange for Self-Employed
+        '#ef4444', // Red for Unemployed
+        '#3b82f6'  // Blue for Graduate School
+      ],
+      borderColor: [
+        '#059669', // Darker Green
+        '#d97706', // Darker Orange
+        '#dc2626', // Darker Red
+        '#2563eb'  // Darker Blue
+      ],
+      borderWidth: 2
     }]
   };
 
+  const genderColorMap = {
+    male: '#1E90FF',   // blue
+    m: '#1E90FF',
+    female: '#FF69B4', // pink
+    f: '#FF69B4'
+  };
+
+  const getGenderColors = (labels = []) => {
+    return labels.map(lbl => genderColorMap[(lbl || '').toString().toLowerCase().trim()] || '#CBD5E1');
+  };
+
+  const genderLabels = Object.keys(analytics.gender);
+  const genderValues = Object.values(analytics.gender).map(v => Math.round((v || 0) * mult));
   const genderChartData = {
-    labels: Object.keys(analytics.gender),
+    labels: genderLabels,
     datasets: [{
-      data: Object.values(analytics.gender).map(v => Math.round((v || 0) * mult)),
-      backgroundColor: ['#ec4899', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'],
-      borderWidth: 0
+      data: genderValues,
+      backgroundColor: getGenderColors(genderLabels),
+      borderColor: getGenderColors(genderLabels).map(c => c),
+      borderWidth: 2
     }]
   };
 
@@ -398,8 +502,36 @@ const AdminDashboard = () => {
     datasets: [{
       label: 'Alumni (by Grad Year)',
       data: cutoffYears.map(y => analytics.graduationYears[y] || 0),
-      backgroundColor: '#8B0000',
-      borderColor: '#660000',
+      backgroundColor: cutoffYears.map((_, index) => {
+        const colors = [
+          '#e91e63', // UIC Pink
+          '#3b82f6', // Blue
+          '#10b981', // Green
+          '#f59e0b', // Orange
+          '#8b5cf6', // Purple
+          '#ef4444', // Red
+          '#06b6d4', // Cyan
+          '#84cc16', // Lime
+          '#f97316', // Orange Red
+          '#ec4899'  // Pink
+        ];
+        return colors[index % colors.length];
+      }),
+      borderColor: cutoffYears.map((_, index) => {
+        const colors = [
+          '#c2185b', // Darker Pink
+          '#2563eb', // Darker Blue
+          '#059669', // Darker Green
+          '#d97706', // Darker Orange
+          '#7c3aed', // Darker Purple
+          '#dc2626', // Darker Red
+          '#0891b2', // Darker Cyan
+          '#65a30d', // Darker Lime
+          '#ea580c', // Darker Orange Red
+          '#db2777'  // Darker Pink
+        ];
+        return colors[index % colors.length];
+      }),
       borderWidth: 2
     }]
   };
@@ -516,8 +648,8 @@ const AdminDashboard = () => {
                 <div className="chart-header">
                   <h3>Employment Status</h3>
                   <div className="chart-range">
-                    {['Year','Month'].map(r => (
-                      <button key={r} className={`tab ${chartRange===r?'active':''}`} onClick={()=>setChartRange(r)}>{r}</button>
+                    {['Year', 'Month'].map(r => (
+                      <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
                     ))}
                   </div>
                 </div>
@@ -532,7 +664,7 @@ const AdminDashboard = () => {
                   <h3>Gender Distribution</h3>
                   <div className="chart-range">
                     {['Year', 'Month'].map(r => (
-                      <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={()=>setChartRange(r)}>{r}</button>
+                      <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
                     ))}
                   </div>
                 </div>
@@ -548,8 +680,8 @@ const AdminDashboard = () => {
                 <div className="chart-header">
                   <h3>Alumni by Graduation Year</h3>
                   <div className="chart-range">
-                    {['5y','10y','20y','All'].map(r => (
-                      <button key={r} className={`tab ${gradYearsFilter===r?'active':''}`} onClick={()=>setGradYearsFilter(r)}>{r}</button>
+                    {['5y', '10y', '20y', 'All'].map(r => (
+                      <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
                     ))}
                   </div>
                 </div>
@@ -653,7 +785,7 @@ const AdminDashboard = () => {
                 </div>
               </button>
 
-              <div className="action-card utility" style={{alignItems:'stretch'}}>
+              <div className="action-card utility" style={{ alignItems: 'stretch' }}>
                 <div className="action-icon export"><FaDownload /></div>
                 <div className="action-text">
                   <div className="action-title">Reports (PDF)</div>

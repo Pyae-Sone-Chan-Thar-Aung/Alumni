@@ -10,14 +10,16 @@ const CompletionWidget = ({ profile }) => {
     profile?.first_name,
     profile?.last_name,
     profile?.phone,
-    profile?.course,
+    profile?.program || profile?.course,
     profile?.batch_year,
     profile?.graduation_year,
-    profile?.current_job,
-    profile?.company,
+    profile?.date_of_birth,
+    profile?.current_job_title || profile?.current_job,
+    profile?.current_company || profile?.company,
     profile?.address,
     profile?.city,
     profile?.country,
+    profile?.postal_code,
     profile?.profile_image_url
   ];
   const total = fields.length || 1;
@@ -51,11 +53,13 @@ const AlumniProfile = () => {
     course: '',
     batch_year: '',
     graduation_year: '',
+    date_of_birth: '',
     current_job: '',
     company: '',
     address: '',
     city: '',
-    country: ''
+    country: '',
+    postal_code: ''
   });
 
   useEffect(() => {
@@ -70,22 +74,23 @@ const AlumniProfile = () => {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select(`
-          *,
+          id, email, first_name, last_name,
           user_profiles (
             first_name,
             last_name,
             student_id,
             graduation_year,
+            batch_year,
             program,
-            current_job,
-            company,
+            date_of_birth,
+            current_job_title,
+            current_company,
             phone,
             address,
             city,
             country,
-            profile_image_url,
-            bio,
-            linkedin_url
+            postal_code,
+            profile_image_url
           )
         `)
         .eq('id', user.id)
@@ -97,23 +102,77 @@ const AlumniProfile = () => {
         return;
       }
 
-      const userProfileData = userData.user_profiles?.[0] || {};
+      let userProfileData = userData.user_profiles?.[0] || {};
+
+      // Fallback: if profile is missing/empty, use pending_registrations by email
+      if (!userProfileData || Object.keys(userProfileData).length === 0) {
+        try {
+          let { data: pending } = await supabase
+            .from('pending_registrations')
+            .select('*')
+            .eq('email', userData.email)
+            .maybeSingle();
+          if (!pending) {
+            const { data: pend2 } = await supabase
+              .from('pending_registrations')
+              .select('*')
+              .ilike('email', userData.email)
+              .maybeSingle();
+            pending = pend2 || null;
+          }
+        if (pending) {
+            userProfileData = {
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              phone: pending.phone,
+              program: pending.program || pending.course,
+              batch_year: pending.batch_year,
+              graduation_year: pending.graduation_year,
+              date_of_birth: pending.date_of_birth || '',
+              current_job_title: pending.current_job_title || pending.current_job,
+              current_company: pending.current_company || pending.company,
+              address: pending.address,
+              city: pending.city,
+              country: pending.country,
+              postal_code: pending.postal_code || '',
+              profile_image_url: pending.profile_image_url
+            };
+
+            // Try to persist into user_profiles for future loads
+            try {
+              await supabase
+                .from('user_profiles')
+                .upsert({
+                  user_id: user.id,
+                  ...userProfileData,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            } catch (persistErr) {
+              console.warn('Could not persist pending data into user_profiles:', persistErr?.message);
+            }
+          }
+        } catch (e) {
+          console.warn('Pending fallback failed:', e?.message);
+        }
+      }
+
       setProfile({ ...userData, ...userProfileData });
 
       // Set form data for editing
       setFormData({
-        first_name: userProfileData.first_name || '',
-        last_name: userProfileData.last_name || '',
+        first_name: userProfileData.first_name || userData.first_name || '',
+        last_name: userProfileData.last_name || userData.last_name || '',
         phone: userProfileData.phone || '',
-        program: userProfileData.program || '',
+        course: userProfileData.program || userProfileData.course || '',
+        batch_year: userProfileData.batch_year || '',
         graduation_year: userProfileData.graduation_year || '',
-        current_job: userProfileData.current_job || '',
-        company: userProfileData.company || '',
+        date_of_birth: userProfileData.date_of_birth || '',
+        current_job: userProfileData.current_job_title || userProfileData.current_job || '',
+        company: userProfileData.current_company || userProfileData.company || '',
         address: userProfileData.address || '',
         city: userProfileData.city || '',
         country: userProfileData.country || 'Philippines',
-        bio: userProfileData.bio || '',
-        linkedin_url: userProfileData.linkedin_url || ''
+        postal_code: userProfileData.postal_code || ''
       });
 
       if (userProfileData.profile_image_url) {
@@ -241,39 +300,53 @@ const AlumniProfile = () => {
         .eq('id', user.id);
 
       if (userError) {
+        console.error('User table update error:', userError);
         throw userError;
       }
 
+      // Prepare profile data
+      const profileData = {
+        user_id: user.id,
+        phone: formData.phone || null,
+        program: formData.course || null,
+        batch_year: formData.batch_year ? parseInt(formData.batch_year) : null,
+        graduation_year: formData.graduation_year ? parseInt(formData.graduation_year) : null,
+        date_of_birth: formData.date_of_birth || null,
+        current_job_title: formData.current_job || null,
+        current_company: formData.company || null,
+        address: formData.address || null,
+        city: formData.city || null,
+        country: formData.country || 'Philippines',
+        postal_code: formData.postal_code || null,
+        profile_image_url: profileImageUrl || null,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Saving profile data:', profileData);
+      console.log('Form data before save:', formData);
+
       // Update or insert profile data
-      const { error: profileError } = await supabase
+      const { data: profileResult, error: profileError } = await supabase
         .from('user_profiles')
-        .upsert({
-          user_id: user.id,
-          phone: formData.phone,
-          course: formData.course,
-          batch_year: formData.batch_year ? parseInt(formData.batch_year) : null,
-          graduation_year: formData.graduation_year ? parseInt(formData.graduation_year) : null,
-          current_job: formData.current_job,
-          company: formData.company,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-          profile_image_url: profileImageUrl,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(profileData, { onConflict: 'user_id' })
+        .select();
+
+      console.log('Profile save result:', profileResult);
+      console.log('Profile save error:', profileError);
 
       if (profileError) {
+        console.error('Profile table update error:', profileError);
         throw profileError;
       }
 
       toast.success('Profile updated successfully!');
       setEditing(false);
       setProfileImage(null);
-      fetchProfile(); // Refresh profile data
+      await fetchProfile(); // Refresh profile data
 
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -288,14 +361,16 @@ const AlumniProfile = () => {
       first_name: profile?.first_name || '',
       last_name: profile?.last_name || '',
       phone: profile?.phone || '',
-      course: profile?.course || '',
+      course: profile?.program || profile?.course || '',
       batch_year: profile?.batch_year || '',
       graduation_year: profile?.graduation_year || '',
-      current_job: profile?.current_job || '',
-      company: profile?.company || '',
+      date_of_birth: profile?.date_of_birth || '',
+      current_job: profile?.current_job_title || profile?.current_job || '',
+      company: profile?.current_company || profile?.company || '',
       address: profile?.address || '',
       city: profile?.city || '',
-      country: profile?.country || 'Philippines'
+      country: profile?.country || 'Philippines',
+      postal_code: profile?.postal_code || ''
     });
   };
 
@@ -337,7 +412,7 @@ const AlumniProfile = () => {
             )}
             <div className="profile-info">
               <h1>{profile?.first_name} {profile?.last_name}</h1>
-              <p className="profile-role">Alumni • {profile?.course}</p>
+              <p className="profile-role">Alumni • {profile?.program || profile?.course}</p>
               <p className="profile-location">{profile?.city || 'Philippines'}</p>
             </div>
             <input
@@ -405,7 +480,17 @@ const AlumniProfile = () => {
               </div>
               <div className="info-item">
                 <p className="info-label">Date of Birth</p>
-                <p className="info-value">25-5-2004</p>
+                {editing ? (
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    value={formData.date_of_birth}
+                    onChange={handleInputChange}
+                    className="form-control"
+                  />
+                ) : (
+                  <p className="info-value">{profile?.date_of_birth || 'Not specified'}</p>
+                )}
               </div>
               <div className="info-item">
                 <p className="info-label">Email Address</p>
@@ -463,7 +548,7 @@ const AlumniProfile = () => {
                     className="form-control"
                   />
                 ) : (
-                  <p className="info-value">{profile?.course || 'Not specified'}</p>
+                  <p className="info-value">{profile?.program || profile?.course || 'Not specified'}</p>
                 )}
               </div>
               <div className="info-item">
@@ -532,7 +617,7 @@ const AlumniProfile = () => {
                     className="form-control"
                   />
                 ) : (
-                  <p className="info-value">{profile?.current_job || 'Not specified'}</p>
+                  <p className="info-value">{profile?.current_job_title || profile?.current_job || 'Not specified'}</p>
                 )}
               </div>
               <div className="info-item">
@@ -546,7 +631,7 @@ const AlumniProfile = () => {
                     className="form-control"
                   />
                 ) : (
-                  <p className="info-value">{profile?.company || 'Not specified'}</p>
+                  <p className="info-value">{profile?.current_company || profile?.company || 'Not specified'}</p>
                 )}
               </div>
             </div>
@@ -602,7 +687,17 @@ const AlumniProfile = () => {
               </div>
               <div className="info-item">
                 <p className="info-label">Postal Code</p>
-                <p className="info-value">1000</p>
+                {editing ? (
+                  <input
+                    type="text"
+                    name="postal_code"
+                    value={formData.postal_code}
+                    onChange={handleInputChange}
+                    className="form-control"
+                  />
+                ) : (
+                  <p className="info-value">{profile?.postal_code || 'Not specified'}</p>
+                )}
               </div>
             </div>
           </div>

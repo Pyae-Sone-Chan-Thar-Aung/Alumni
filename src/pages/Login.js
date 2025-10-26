@@ -54,6 +54,28 @@ const Login = () => {
       console.log('✅ Auth successful');
       const supaUser = auth.user;
 
+      // Helper: move uploaded image from temp/<file> to <userId>/<file>
+      const moveImageFromTempToUser = async (userId, imageUrl) => {
+        try {
+          if (!imageUrl || !userId) return { publicUrl: imageUrl };
+          const marker = '/object/public/alumni-profiles/';
+          const idx = imageUrl.indexOf(marker);
+          if (idx === -1) return { publicUrl: imageUrl };
+          const oldPath = imageUrl.substring(idx + marker.length);
+          if (!oldPath.startsWith('temp/')) return { publicUrl: imageUrl };
+          const fileName = oldPath.split('/').pop();
+          const newPath = `${userId}/${fileName}`;
+          const { error: copyErr } = await supabase.storage.from('alumni-profiles').copy(oldPath, newPath);
+          if (copyErr) throw copyErr;
+          await supabase.storage.from('alumni-profiles').remove([oldPath]).catch(() => {});
+          const { data: { publicUrl } } = supabase.storage.from('alumni-profiles').getPublicUrl(newPath);
+          return { publicUrl };
+        } catch (e) {
+          console.warn('Image move failed on login:', e?.message);
+          return { publicUrl: imageUrl };
+        }
+      };
+
       // 2) Ensure application user record exists (create if missing)
       let { data: userRecord, error: fetchUserError } = await supabase
         .from('users')
@@ -107,7 +129,62 @@ const Login = () => {
           .maybeSingle();
       }
 
-      // 3) Load profile (optional)
+      // 3) If there is an approved pending registration, auto-approve this user and import profile
+      try {
+        let { data: pending } = await supabase
+          .from('pending_registrations')
+          .select('*')
+          .eq('email', supaUser.email)
+          .maybeSingle();
+        if (!pending) {
+          const { data: pend2 } = await supabase
+            .from('pending_registrations')
+            .select('*')
+            .ilike('email', supaUser.email)
+            .maybeSingle();
+          pending = pend2 || null;
+        }
+        if (pending && pending.status === 'approved' && userRecord.approval_status !== 'approved') {
+          await supabase
+            .from('users')
+            .update({ approval_status: 'approved', is_verified: true, approved_at: new Date().toISOString() })
+            .eq('id', userRecord.id);
+
+          let imageUrl = pending.profile_image_url || null;
+          if (imageUrl && imageUrl.includes('/temp/')) {
+            const moved = await moveImageFromTempToUser(userRecord.id, imageUrl);
+            imageUrl = moved.publicUrl;
+          }
+
+          await supabase
+            .from('user_profiles')
+            .upsert({
+              user_id: userRecord.id,
+              phone: pending.phone || null,
+              course: pending.course || null,
+              batch_year: pending.batch_year || null,
+              graduation_year: pending.graduation_year || null,
+              current_job: pending.current_job || null,
+              company: pending.company || null,
+              address: pending.address || null,
+              city: pending.city || null,
+              country: pending.country || 'Philippines',
+              profile_image_url: imageUrl || null,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+          await supabase
+            .from('pending_registrations')
+            .update({ processed_at: new Date().toISOString() })
+            .eq('id', pending.id);
+
+          userRecord.approval_status = 'approved';
+        }
+      } catch (e) {
+        console.warn('Pending import skipped:', e?.message);
+      }
+
+      // 4) Load profile (optional)
       let profile = null;
       try {
         const { data: profileData } = await supabase
@@ -118,6 +195,60 @@ const Login = () => {
         profile = profileData || null;
       } catch (profileError) {
         console.warn('⚠️ Could not load profile:', profileError);
+      }
+
+      // 4b) If profile missing or mostly empty, import from pending_registrations now
+      try {
+        const mostlyEmpty = !profile || (
+          !profile.course && !profile.batch_year && !profile.graduation_year &&
+          !profile.phone && !profile.current_job && !profile.company &&
+          !profile.address && !profile.city && !profile.country && !profile.profile_image_url
+        );
+        if (mostlyEmpty) {
+          let { data: pending } = await supabase
+            .from('pending_registrations')
+            .select('*')
+            .eq('email', supaUser.email)
+            .maybeSingle();
+          if (!pending) {
+            const { data: pend2 } = await supabase
+              .from('pending_registrations')
+              .select('*')
+              .ilike('email', supaUser.email)
+              .maybeSingle();
+            pending = pend2 || null;
+          }
+          if (pending) {
+            let imageUrl = pending.profile_image_url || null;
+            if (imageUrl && imageUrl.includes('/temp/')) {
+              const moved = await moveImageFromTempToUser(userRecord.id, imageUrl);
+              imageUrl = moved.publicUrl;
+            }
+            const { data: upserted, error: profErr } = await supabase
+              .from('user_profiles')
+              .upsert({
+                user_id: userRecord.id,
+                phone: pending.phone || null,
+                course: pending.course || null,
+                batch_year: pending.batch_year || null,
+                graduation_year: pending.graduation_year || null,
+                current_job: pending.current_job || null,
+                company: pending.company || null,
+                address: pending.address || null,
+                city: pending.city || null,
+                country: pending.country || 'Philippines',
+                profile_image_url: imageUrl || null,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'user_id' })
+              .select()
+              .maybeSingle();
+            if (!profErr) {
+              profile = upserted || profile;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Profile import after login skipped:', e?.message);
       }
 
       console.log('✅ User loaded:', {

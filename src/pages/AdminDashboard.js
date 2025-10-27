@@ -1010,17 +1010,14 @@ const AdminDashboard = () => {
           {showPendingModal && (
             <div className="modal-overlay">
               <div className="pending-modal-content">
+                <button className="pending-panel-close" onClick={() => setShowPendingModal(false)} aria-label="Close pending panel">
+                  <FaTimes />
+                </button>
                 <div className="pending-modal-header">
                   <div className="modal-title-section">
                     <h2>Pending Registrations</h2>
                     <span className="pending-count">{pendingUsers.length} pending</span>
                   </div>
-                  <button
-                    className="modal-close"
-                    onClick={() => setShowPendingModal(false)}
-                  >
-                    <FaTimes />
-                  </button>
                 </div>
                 <div className="pending-modal-body">
                   {pendingUsers.length > 0 ? (

@@ -67,7 +67,8 @@ const Register = () => {
   const batches = [
     '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015',
     '2014', '2013', '2012', '2011', '2010', '2009', '2008', '2007', '2006', '2005',
-    '2004', '2003', '2002', '2001', '2000', '1999', '1998', '1997', '1996', '1995'
+    '2004', '2003', '2002', '2001', '2000', '1999', '1998', '1997', '1996', '1995',
+    '1994', '1993', '1992', '1991', '1990', 'Before 1990'
   ];
 
   const handleChange = (e) => {
@@ -84,7 +85,7 @@ const Register = () => {
         toast.error('Image size must be less than 5MB');
         return;
       }
-      
+
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
         toast.error('Only JPG, JPEG, and PNG files are allowed');
@@ -92,7 +93,7 @@ const Register = () => {
       }
 
       setProfileImage(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -220,7 +221,7 @@ const Register = () => {
           details: regError.details,
           hint: regError.hint
         });
-        
+
         // If registration fails and we uploaded an image, we should clean it up
         if (profileImageUrl) {
           try {
@@ -233,7 +234,7 @@ const Register = () => {
             console.error('Failed to cleanup uploaded image:', cleanupError);
           }
         }
-        
+
         // Provide more specific error messages
         if (regError.message.includes('duplicate key')) {
           toast.error('An account with this email already exists. Please use a different email or try logging in.');
@@ -254,15 +255,15 @@ const Register = () => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: { 
-          data: { 
-            first_name: formData.firstName, 
+        options: {
+          data: {
+            first_name: formData.firstName,
             last_name: formData.lastName,
             profile_image_url: profileImageUrl
-          } 
+          }
         }
       });
-      
+
       if (authError) {
         console.error('Auth user creation error:', authError);
         console.error('Auth error details:', {
@@ -270,7 +271,7 @@ const Register = () => {
           code: authError.code,
           details: authError.details
         });
-        
+
         // If auth fails, we should clean up the pending registration and uploaded image
         if (regData && regData[0]) {
           await supabase
@@ -278,7 +279,7 @@ const Register = () => {
             .delete()
             .eq('id', regData[0].id);
         }
-        
+
         if (profileImageUrl) {
           try {
             const fileName = profileImageUrl.split('/').pop();
@@ -290,7 +291,7 @@ const Register = () => {
             console.error('Failed to cleanup uploaded image:', cleanupError);
           }
         }
-        
+
         toast.error(authError.message || 'Failed to create user account. Please try again.');
         return;
       }
@@ -468,7 +469,7 @@ const Register = () => {
                     className="form-control"
                     required
                   >
-                    <option value="">Select your batch</option>
+                    <option value="">Select your year enrolled</option>
                     {batches.map(batch => (
                       <option key={batch} value={batch}>{batch}</option>
                     ))}

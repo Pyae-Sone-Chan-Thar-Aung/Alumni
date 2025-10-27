@@ -109,9 +109,9 @@ npm install -g pm2
 - **API Health Check**: https://alumni.uic.edu.ph/api/health
 
 ## Support Contacts
-- **Technical Support**: IT Department - UIC
-- **System Administrator**: [Admin Name]
-- **Development Team**: [Team Contact]
+- **Technical Support**: MIS/MIT Department - UIC
+- **System Administrator**: MIS
+- **Development Team**: Group 1B (AY 2025-2026)
 
 ## Rollback Plan
 If issues occur after deployment:
@@ -130,7 +130,7 @@ If issues occur after deployment:
 
 ---
 
-**Deployment Date**: _________________
-**Deployed By**: _________________
+**Deployment Date**: October 21st, 2025
+**Deployed By**: Pyae Sone Chan Thar Aung (BSCS-3A)
 **Version**: 1.0.0
 **Status**: Ready for Production ✅

@@ -118,6 +118,12 @@
   flex-shrink: 0;
 }
 
+/* Ensure AdminUsers page select has safe spacing regardless of other global styles */
+.status-select {
+  padding-left: 40px !important;
+  font-size: 12px !important;
+}
+
 .filter-group {
   position: relative;
   display: flex;
@@ -127,7 +133,7 @@
 
 .filter-icon {
   position: absolute;
-  left: 10px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: #6b7280;
@@ -138,11 +144,11 @@
 
 .filter-select,
 .date-filter {
-  padding: 10px 12px 10px 32px;
+  padding: 10px 12px 10px 40px; /* extra left space so text never overlaps the icon */
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background: white;
-  font-size: 11px;
+  font-size: 12px; /* slightly smaller for compact label */
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -155,6 +161,9 @@
   vertical-align: middle;
   display: flex;
   align-items: center;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .filter-select option {
@@ -218,8 +227,19 @@
 }
 
 .main-content.with-sidebar {
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(800px, 1fr) 360px;
   gap: 20px;
+}
+
+/* Ensure table container adjusts when sidebar is open */
+.main-content.with-sidebar .users-section {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.main-content.with-sidebar .table-container {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Clean Users Section */
@@ -287,7 +307,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  min-width: 1200px;
+  min-width: 1000px;
   font-size: 14px;
   border: 1px solid #e5e7eb;
 }
@@ -342,10 +362,21 @@
 /* Actions Column */
 .users-table th:nth-child(7),
 .users-table td:nth-child(7) {
-  width: 170px;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
   text-align: center;
-  padding: 12px 16px;
+  padding: 12px 8px;
   white-space: nowrap;
+}
+
+.actions-header {
+  text-align: center !important;
+}
+
+.actions-cell {
+  text-align: center !important;
+  vertical-align: middle;
 }
 
 /* Reset Table Headers */
@@ -639,72 +670,101 @@
   justify-content: center;
   align-items: center;
   margin: 0;
-  padding: 0;
+  padding: 4px;
   width: 100%;
 }
 
 .action-btn {
   position: relative;
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  width: 32px;
-  height: 32px;
-  padding: 6px;
-  border-radius: 6px;
-  font-size: 14px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 16px;
   transition: all 0.2s ease;
-  border: 1px solid #e5e7eb;
-  background: white;
+  border: 1.5px solid transparent;
+  background: #f3f4f6;
   cursor: pointer;
   color: #6b7280;
+  flex-shrink: 0;
+  overflow: visible;
+  line-height: 1;
 }
 
 .action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px !important;
+  height: 18px !important;
   flex-shrink: 0;
+  display: block !important;
+  pointer-events: none;
+  fill: currentColor;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure icons inherit button color */
+.action-btn svg path {
+  fill: currentColor;
 }
 
 .action-btn.view {
   color: #3b82f6;
-  border-color: #dbeafe;
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .action-btn.view:hover {
-  background: #eff6ff;
+  background: #dbeafe;
   border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .action-btn.edit {
   color: #10b981;
-  border-color: #d1fae5;
+  background: #d1fae5;
+  border-color: #a7f3d0;
 }
 
 .action-btn.edit:hover {
-  background: #ecfdf5;
+  background: #a7f3d0;
   border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .action-btn.delete {
   color: #ef4444;
-  border-color: #fee2e2;
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .action-btn.delete:hover {
-  background: #fef2f2;
+  background: #fca5a5;
   border-color: #ef4444;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 .action-btn:disabled:hover {
-  background: white;
-  border-color: #e5e7eb;
+  background: #f3f4f6;
+  border-color: transparent;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Ensure sufficient contrast focus for keyboard users */
@@ -728,6 +788,14 @@
 
   .action-buttons {
     gap: 6px;
+  }
+
+  /* Ensure safe spacing with icon on small screens too */
+  .filter-select,
+  .date-filter {
+    padding-left: 38px;
+    font-size: 12px;
+    height: 36px;
   }
 }
 

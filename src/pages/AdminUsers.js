@@ -3,6 +3,7 @@ import { FaUserCheck, FaUserTimes, FaSearch, FaFilter, FaEye, FaUser, FaEnvelope
 import { toast } from 'react-toastify';
 import './AdminUsers.css';
 import { supabase } from '../config/supabaseClient';
+import AddUserModal from '../components/AddUserModal';
 
 const AdminUsers = () => {
   const [filter, setFilter] = useState('all');
@@ -14,6 +15,11 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(false);
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // Add User Modal state
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   // Helper function to get user initials for avatar
   const getUserInitials = (firstName, lastName, email) => {
@@ -26,116 +32,66 @@ const AdminUsers = () => {
     return 'U';
   };
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        console.log('🔍 Starting to fetch users for admin dashboard...');
+  // Function to fetch users - extracted for reusability
+  const fetchUsers = async () => {
+    try {
+      console.log('🔍 Starting to fetch users for admin dashboard...');
+      
+      // Try to use the user management view first
+      let { data: usersData, error: usersError } = await supabase
+        .from('user_management_view')
+        .select('*')
+        .order('user_created_at', { ascending: false });
+      
+      // If view doesn't exist, fall back to direct table query immediately
+      if (usersError && usersError.message.includes('user_management_view')) {
+        console.log('🔄 user_management_view not found, using direct table query...');
+        usersError = null; // Clear the error to proceed with fallback
+      }
+      
+      console.log('📊 Users query result:', { data: usersData, error: usersError });
+      
+      if (usersError) {
+        console.error('❌ Error fetching users:', usersError);
         
-        // Try to use the user management view first
-        let { data: usersData, error: usersError } = await supabase
-          .from('user_management_view')
-          .select('*')
-          .order('user_created_at', { ascending: false });
+        // Fallback to direct table query if view doesn't exist
+        console.log('🔄 Trying fallback query...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('users')
+          .select(`
+            *,
+            user_profiles (
+              phone,
+              mobile,
+              program,
+              batch_year,
+              graduation_year,
+              current_job_title,
+              current_company,
+              address,
+              city,
+              country,
+              profile_image_url
+            )
+          `)
+          .order('created_at', { ascending: false });
         
-        // If view doesn't exist, fall back to direct table query immediately
-        if (usersError && usersError.message.includes('user_management_view')) {
-          console.log('🔄 user_management_view not found, using direct table query...');
-          usersError = null; // Clear the error to proceed with fallback
-        }
-        
-        console.log('📊 Users query result:', { data: usersData, error: usersError });
-        
-        if (usersError) {
-          console.error('❌ Error fetching users:', usersError);
-          
-          // Fallback to direct table query if view doesn't exist
-          console.log('🔄 Trying fallback query...');
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('users')
-            .select(`
-              *,
-              user_profiles (
-                phone,
-                mobile,
-                program,
-                batch_year,
-                graduation_year,
-                current_job_title,
-                current_company,
-                address,
-                city,
-                country,
-                profile_image_url
-              )
-            `)
-            .order('created_at', { ascending: false });
-          
-          if (fallbackError) {
-            console.error('❌ Fallback query also failed:', fallbackError);
-            toast.error('Failed to fetch users. Please check database connection.');
-            return;
-          }
-          
-          // Process fallback data with proper placeholders
-          const processedUsers = (fallbackData || []).map(u => {
-            const profile = u.user_profiles?.[0] || {};
-            console.log('🔍 Processing fallback user:', {
-              name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-              email: u.email,
-              course: profile.program,
-              profileImage: profile.profile_image_url,
-              profileData: profile,
-              userData: u
-            });
-            
-            return {
-              id: u.id,
-              firstName: u.first_name || '',
-              lastName: u.last_name || '',
-              name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || '—',
-              email: u.email || '—',
-              course: profile.program || '—',  // 'program' in database
-              batch: profile.batch_year || '—',
-              graduationYear: profile.graduation_year || '—',
-              status: u.approval_status || (u.is_verified ? 'approved' : 'pending'),
-              registrationDate: u.registration_date?.slice(0,10) || u.created_at?.slice(0,10) || '—',
-              joinedDate: u.created_at?.slice(0,10) || '—',
-              lastActive: u.last_login?.slice(0,10) || 'Never',
-              phone: profile.phone || profile.mobile || '—',  // Use phone or mobile
-              address: profile.address || '—',
-              city: profile.city || '—',
-              country: profile.country || '—',
-              currentJob: profile.current_job_title || '—',
-              company: profile.current_company || '—',
-              profileImage: profile.profile_image_url || null,
-              role: u.role || 'alumni',
-              isVerified: u.is_verified || false,
-              isActive: u.is_active !== false,
-              approvedAt: u.approved_at,
-              bio: profile.bio || ''
-            };
-          });
-          
-          console.log(`📋 Processed ${processedUsers.length} users from fallback`);
-          setUsers(processedUsers);
+        if (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          toast.error('Failed to fetch users. Please check database connection.');
           return;
         }
         
-        if (!usersData || usersData.length === 0) {
-          console.warn('⚠️ No users found in database');
-          toast.info('No users found in the database');
-          setUsers([]);
-          return;
-        }
-        
-        // Process view data with proper placeholders
-        const processedUsers = usersData.map(u => {
-          console.log('🔍 Processing user:', {
+        // Process fallback data with proper placeholders
+        const processedUsers = (fallbackData || []).map(u => {
+          const profile = u.user_profiles?.[0] || {};
+          console.log('🔍 Processing fallback user:', {
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
             email: u.email,
-            course: u.course || u.program,
-            profileImage: u.profile_image_url,
-            rawData: u
+            course: profile.program,
+            profileImage: profile.profile_image_url,
+            profileData: profile,
+            userData: u
           });
           
           return {
@@ -144,38 +100,89 @@ const AdminUsers = () => {
             lastName: u.last_name || '',
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || '—',
             email: u.email || '—',
-            course: u.course || u.program || '—',  // Handle both column names
-            batch: u.batch_year || '—',
-            graduationYear: u.graduation_year || '—',
+            course: profile.program || '—',  // 'program' in database
+            batch: profile.batch_year || '—',
+            graduationYear: profile.graduation_year || '—',
             status: u.approval_status || (u.is_verified ? 'approved' : 'pending'),
-            registrationDate: u.registration_date?.slice(0,10) || u.user_created_at?.slice(0,10) || '—',
-            joinedDate: u.user_created_at?.slice(0,10) || '—',
-            lastActive: 'Never', // View doesn't include last_login
-            phone: u.phone || '—',
-            address: u.address || '—',
-            city: u.city || '—',
-            country: u.country || '—',
-            currentJob: u.current_job || '—',
-            company: u.company || '—',
-            profileImage: u.profile_image_url || null,
+            registrationDate: u.registration_date?.slice(0,10) || u.created_at?.slice(0,10) || '—',
+            joinedDate: u.created_at?.slice(0,10) || '—',
+            lastActive: u.last_login?.slice(0,10) || 'Never',
+            phone: profile.phone || profile.mobile || '—',  // Use phone or mobile
+            address: profile.address || '—',
+            city: profile.city || '—',
+            country: profile.country || '—',
+            currentJob: profile.current_job_title || '—',
+            company: profile.current_company || '—',
+            profileImage: profile.profile_image_url || null,
             role: u.role || 'alumni',
             isVerified: u.is_verified || false,
-            isActive: true, // Assume active if in view
+            isActive: u.is_active !== false,
             approvedAt: u.approved_at,
-            bio: ''
+            bio: profile.bio || ''
           };
         });
         
-        console.log(`✅ Found ${usersData.length} users`);
-        console.log(`📋 Final processed users:`, processedUsers);
+        console.log(`📋 Processed ${processedUsers.length} users from fallback`);
         setUsers(processedUsers);
-        
-      } catch (error) {
-        console.error('❌ Unexpected error fetching users:', error);
-        toast.error('An unexpected error occurred while fetching users');
+        return;
       }
-    };
-    
+      
+      if (!usersData || usersData.length === 0) {
+        console.warn('⚠️ No users found in database');
+        toast.info('No users found in the database');
+        setUsers([]);
+        return;
+      }
+      
+      // Process view data with proper placeholders
+      const processedUsers = usersData.map(u => {
+        console.log('🔍 Processing user:', {
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+          email: u.email,
+          course: u.course || u.program,
+          profileImage: u.profile_image_url,
+          rawData: u
+        });
+        
+        return {
+          id: u.id,
+          firstName: u.first_name || '',
+          lastName: u.last_name || '',
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || '—',
+          email: u.email || '—',
+          course: u.course || u.program || '—',  // Handle both column names
+          batch: u.batch_year || '—',
+          graduationYear: u.graduation_year || '—',
+          status: u.approval_status || (u.is_verified ? 'approved' : 'pending'),
+          registrationDate: u.registration_date?.slice(0,10) || u.user_created_at?.slice(0,10) || '—',
+          joinedDate: u.user_created_at?.slice(0,10) || '—',
+          lastActive: 'Never', // View doesn't include last_login
+          phone: u.phone || '—',
+          address: u.address || '—',
+          city: u.city || '—',
+          country: u.country || '—',
+          currentJob: u.current_job || '—',
+          company: u.company || '—',
+          profileImage: u.profile_image_url || null,
+          role: u.role || 'alumni',
+          isVerified: u.is_verified || false,
+          isActive: true, // Assume active if in view
+          approvedAt: u.approved_at,
+          bio: ''
+        };
+      });
+      
+      console.log(`✅ Found ${usersData.length} users`);
+      console.log(`📋 Final processed users:`, processedUsers);
+      setUsers(processedUsers);
+      
+    } catch (error) {
+      console.error('❌ Unexpected error fetching users:', error);
+      toast.error('An unexpected error occurred while fetching users');
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -225,6 +232,36 @@ const AdminUsers = () => {
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
+
+  // Pagination calculations (client-side)
+  const totalUsersFiltered = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalUsersFiltered / rowsPerPage));
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalUsersFiltered);
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset page on filter/search/rows change; clamp if out of range
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filter, dateFilter, rowsPerPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages]);
+
+  const getPageItems = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      pages.push(1, 2, 3, '...', totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+    }
+    return pages;
+  };
 
   const handleRowClick = (user) => {
     setSelectedUser(user);
@@ -370,7 +407,7 @@ const AdminUsers = () => {
             <span className="current">User Management</span>
           </div>
           <div className="admin-topbar-actions">
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={() => setShowAddUserModal(true)}>
               <FaUser /> Add User
             </button>
           </div>
@@ -395,7 +432,7 @@ const AdminUsers = () => {
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="filter-select"
+                className="filter-select status-select"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -428,9 +465,9 @@ const AdminUsers = () => {
             <div className="section-header">
               <h3>Users</h3>
               <span className="user-count">
-                {filteredUsers.length > 0 
-                  ? `Showing ${filteredUsers.length} of ${users.length} users`
-                  : `${users.length} users total`
+                {totalUsersFiltered > 0 
+                  ? `Showing ${startIndex + 1}-${endIndex} of ${totalUsersFiltered} users`
+                  : '0 users'
                 }
               </span>
             </div>
@@ -479,7 +516,7 @@ const AdminUsers = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user, index) => (
+                  {paginatedUsers.map((user, index) => (
                     <tr 
                       key={user.id} 
                       className={`table-row ${
@@ -582,21 +619,47 @@ const AdminUsers = () => {
             {/* Pagination */}
             <div className="pagination">
               <span className="pagination-info">
-                Rows per page: 
-                <select className="rows-select">
-                  <option>10</option>
-                  <option>25</option>
-                  <option>50</option>
+                Rows per page:
+                <select
+                  className="rows-select"
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(parseInt(e.target.value) || 10)}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
                 </select>
               </span>
               <div className="pagination-controls">
-                <button className="pagination-btn">‹</button>
-                <span className="page-number active">1</span>
-                <span className="page-number">2</span>
-                <span className="page-number">3</span>
-                <span className="pagination-dots">...</span>
-                <span className="page-number">10</span>
-                <button className="pagination-btn">›</button>
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  title="Previous page"
+                >
+                  ‹
+                </button>
+                {getPageItems().map((item, idx) => (
+                  typeof item === 'string' ? (
+                    <span key={`dots-${idx}`} className="pagination-dots">{item}</span>
+                  ) : (
+                    <button
+                      key={item}
+                      className={`page-number ${item === currentPage ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(item)}
+                    >
+                      {item}
+                    </button>
+                  )
+                ))}
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  title="Next page"
+                >
+                  ›
+                </button>
               </div>
             </div>
           </div>
@@ -742,9 +805,18 @@ const AdminUsers = () => {
             </div>
           )}
         </div>
+
+        {/* Add User Modal */}
+        <AddUserModal 
+          isOpen={showAddUserModal}
+          onClose={() => setShowAddUserModal(false)}
+          onUserAdded={() => {
+            fetchUsers(); // Refresh the users list after adding a new user
+          }}
+        />
       </main>
     </div>
   );
 };
 
-export default AdminUsers; 
+export default AdminUsers;

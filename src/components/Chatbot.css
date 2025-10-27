@@ -5,7 +5,7 @@
   width: auto;
   height: 56px;
   border-radius: 28px;
-  background: #6B7280;
+  background: var(--uic-light-pink);
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -32,11 +32,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #dc143c 0%, #b91131 100%);
+  background: #ffffff;
   border-radius: 50%;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 0 0 3px #6B7280;
+  box-shadow: 0 0 0 3px var(--uic-pink);
   margin-left: 0;
 }
 
@@ -53,7 +53,7 @@
 .robot-face {
   width: 36px;
   height: 36px;
-  background: #2d3748;
+  background: #FFD700;
   border-radius: 8px;
   position: relative;
   display: flex;
@@ -98,7 +98,7 @@
   transform: translateX(-50%);
   width: 3px;
   height: 6px;
-  background: #2d3748;
+  background: #FFD700;
 }
 
 .robot-antenna::after {
@@ -116,9 +116,9 @@
 .chatbot-toggle-text {
   flex: 1;
   padding: 0 20px 0 12px;
-  color: white;
+  color: var(--color-text);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.3px;
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -159,7 +159,7 @@
 }
 
 .header-robot-icon {
-  font-size: 1.5rem;
+  font-size: 0; /* hidden; replaced by image */
 }
 
 .chatbot-close {
@@ -383,6 +383,10 @@
   }
 }
 
+/* Robot image sizes */
+.robot-img { width: 36px; height: 36px; display: block; object-fit: contain; }
+.header-robot-img { width: 22px; height: 22px; display: block; object-fit: contain; }
+
 @media (max-width: 768px) {
   .chatbot-container {
     width: 100vw;
@@ -403,7 +407,7 @@
   .chatbot-toggle-icon {
     width: 52px;
     height: 52px;
-    box-shadow: 0 0 0 2.5px #6B7280;
+    box-shadow: 0 0 0 2.5px var(--uic-pink);
   }
   
   .robot-face {

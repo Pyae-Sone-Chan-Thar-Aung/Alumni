@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane } from 'react-icons/fa';
 import ollamaService from '../services/ollamaService';
 import './Chatbot.css';
+import robotIcon from '../assets/ai-robot.svg';
 
 const Chatbot = ({ isOpen, onToggle }) => {
   const [conversationState, setConversationState] = useState('welcome');
@@ -494,10 +495,7 @@ Provide a helpful, accurate response in the user's language:`;
     <>
       <button className="chatbot-toggle" onClick={handleToggle} aria-label={isOpen ? 'Close chat' : 'Open chat'}>
         <div className="chatbot-toggle-icon">
-          <div className="robot-face">
-            <div className="robot-antenna"></div>
-            <div className="robot-mouth"></div>
-          </div>
+          <img src={robotIcon} alt="Jaguar AI" className="robot-img" />
         </div>
         <span className="chatbot-toggle-text">Ask Jaguar</span>
         {unreadCount > 0 && <span className="chatbot-badge" aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -507,7 +505,7 @@ Provide a helpful, accurate response in the user's language:`;
         <div className="chatbot-container">
           <div className="chatbot-header">
             <div className="chatbot-title">
-              <span className="header-robot-icon">🤖</span>
+              <img src={robotIcon} alt="" className="header-robot-img" />
               <span>Ask Jaguar</span>
             </div>
             <button className="chatbot-close" onClick={handleToggle} aria-label="Close chat">

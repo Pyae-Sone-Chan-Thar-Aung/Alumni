@@ -1,310 +1,222 @@
 import React from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import { FaDownload, FaPrint, FaFilePdf } from 'react-icons/fa';
+import autoTable from 'jspdf-autotable';
+import { FaDownload, FaPrint } from 'react-icons/fa';
 
-const PDFReport = ({ data, reportType }) => {
+// Office-friendly PDF report generator for Admin Dashboard quick action
+// - Neutral colors, A4 layout, generous margins
+// - No dummy fallback numbers; defaults to 0 when data is missing
+const PDFReport = ({ data = {}, reportType = 'General Portal Statistics' }) => {
   const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add UIC header
-    doc.setFontSize(20);
-    doc.setTextColor(233, 30, 99); // UIC Pink
-    doc.text('University of the Immaculate Conception', 105, 20, { align: 'center' });
-    
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(30, 30, 30);
+    doc.text('University of the Immaculate Conception', pageWidth / 2, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Alumni Portal - Administrative Report', pageWidth / 2, 28, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 36, { align: 'center' });
+
+    // Divider line
+    doc.setDrawColor(180, 180, 180);
+    doc.line(margin, 42, pageWidth - margin, 42);
+
+    // Report title
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Alumni Portal - Administrative Report', 105, 30, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 40, { align: 'center' });
-    
-    // Add report type title
-    doc.setFontSize(16);
-    doc.setTextColor(233, 30, 99);
-    doc.text(`${reportType} Report`, 20, 55);
-    
-    let yPosition = 70;
-    
+    doc.setTextColor(40, 40, 40);
+    doc.text(`${reportType} Report`, margin, 55);
+
+    let yPosition = 65;
+
     switch (reportType) {
       case 'Alumni Statistics':
-        generateAlumniStatsReport(doc, data, yPosition);
+        generateAlumniStatsReport(doc, data, yPosition, margin);
         break;
       case 'Job Opportunities':
-        generateJobReport(doc, data, yPosition);
+        generateJobReport(doc, data, yPosition, margin);
         break;
       case 'User Management':
-        generateUserReport(doc, data, yPosition);
+        generateUserReport(doc, data, yPosition, margin);
         break;
       case 'News & Announcements':
-        generateNewsReport(doc, data, yPosition);
+        generateNewsReport(doc, data, yPosition, margin);
         break;
       default:
-        generateGeneralReport(doc, data, yPosition);
+        generateGeneralReport(doc, data, yPosition, margin);
     }
-    
+
     // Save the PDF
     doc.save(`UIC_Alumni_${reportType.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
-  
-  const generateAlumniStatsReport = (doc, data, startY) => {
-    let y = startY;
-    
-    // Summary statistics
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Summary Statistics', 20, y);
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total Alumni: ${data.totalUsers || 1250}`, 20, y);
-    y += 6;
-    doc.text(`Active Users: ${data.activeUsers || 892}`, 20, y);
-    y += 6;
-    doc.text(`New Registrations: ${data.newRegistrations || 23}`, 20, y);
-    y += 6;
-    doc.text(`Pending Approvals: ${data.pendingApprovals || 15}`, 20, y);
-    y += 15;
-    
-    // Employment statistics table
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Employment Status Distribution', 20, y);
-    y += 10;
-    
-    const employmentData = [
-      ['Status', 'Count', 'Percentage'],
-      ['Employed', '812', '65%'],
-      ['Unemployed', '150', '12%'],
-      ['Self-employed', '188', '15%'],
-      ['Graduate School', '63', '5%'],
-      ['Other', '37', '3%']
-    ];
-    
-    doc.autoTable({
-      startY: y,
-      head: [employmentData[0]],
-      body: employmentData.slice(1),
+
+  const makeTable = (doc, head, body, startY) => {
+    autoTable(doc, {
+      startY,
+      head: [head],
+      body,
       theme: 'grid',
-      headStyles: { fillColor: [233, 30, 99] },
-      styles: { fontSize: 9 }
+      styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.25 },
+      headStyles: { fillColor: [235, 235, 235], textColor: [0, 0, 0] },
+      alternateRowStyles: { fillColor: [248, 248, 248] }
     });
-    
-    y = doc.lastAutoTable.finalY + 15;
-    
-    // Gender distribution
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Gender Distribution', 20, y);
-    y += 10;
-    
-    const genderData = [
-      ['Gender', 'Count', 'Percentage'],
-      ['Female', '725', '58%'],
-      ['Male', '525', '42%']
-    ];
-    
-    doc.autoTable({
-      startY: y,
-      head: [genderData[0]],
-      body: genderData.slice(1),
-      theme: 'grid',
-      headStyles: { fillColor: [233, 30, 99] },
-      styles: { fontSize: 9 }
-    });
+    return (doc.lastAutoTable && doc.lastAutoTable.finalY) || startY;
   };
-  
-  const generateJobReport = (doc, data, startY) => {
+
+  const generateAlumniStatsReport = (doc, d, startY, margin) => {
     let y = startY;
-    
-    // Job summary
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Job Opportunities Summary', 20, y);
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total Job Postings: ${data.totalJobs || 89}`, 20, y);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Summary Statistics', margin, y);
     y += 6;
-    doc.text(`Active Jobs: ${data.activeJobs || 67}`, 20, y);
-    y += 6;
-    doc.text(`Jobs Posted This Month: ${data.monthlyJobs || 8}`, 20, y);
-    y += 15;
-    
-    // Job opportunities table
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Recent Job Postings', 20, y);
-    y += 10;
-    
-    const jobData = [
-      ['Title', 'Company', 'Location', 'Type', 'Salary Range'],
-      ['Senior Software Engineer', 'TechCorp Inc.', 'Davao City', 'Full-time', '₱80,000 - ₱120,000'],
-      ['Data Scientist', 'DataFlow Solutions', 'Manila', 'Full-time', '₱90,000 - ₱150,000'],
-      ['Nurse Practitioner', 'City Hospital', 'Cebu City', 'Full-time', '₱60,000 - ₱90,000'],
-      ['Marketing Manager', 'Global Solutions', 'Manila', 'Full-time', '₱75,000 - ₱110,000'],
-      ['Accountant', 'FinancePro Services', 'Davao City', 'Full-time', '₱50,000 - ₱75,000']
+
+    const summary = [
+      ['Metric', 'Value'],
+      ['Total Alumni', d.totalUsers ?? 0],
+      ['Pending Approvals', d.pendingApprovals ?? 0],
+      ['Tracer Study Responses', d.tracerStudyResponses ?? 0]
     ];
-    
-    doc.autoTable({
-      startY: y,
-      head: [jobData[0]],
-      body: jobData.slice(1),
-      theme: 'grid',
-      headStyles: { fillColor: [233, 30, 99] },
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 30 }
-      }
-    });
+    y = makeTable(doc, summary[0], summary.slice(1), y + 4) + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Employment Status Distribution', margin, y);
+    y += 4;
+    y = makeTable(
+      doc,
+      ['Status', 'Count'],
+      [
+        ['Employed', d.employment?.employed ?? 0],
+        ['Self-employed', d.employment?.selfEmployed ?? 0],
+        ['Unemployed', d.employment?.unemployed ?? 0],
+        ['Graduate School', d.employment?.graduateSchool ?? 0]
+      ],
+      y + 4
+    ) + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Gender Distribution', margin, y);
+    const genderRows = Object.entries(d.gender || {}).map(([k, v]) => [String(k), v ?? 0]);
+    makeTable(doc, ['Gender', 'Count'], genderRows.length ? genderRows : [['—', 0]], y + 4);
   };
-  
-  const generateUserReport = (doc, data, startY) => {
+
+  const generateJobReport = (doc, d, startY, margin) => {
     let y = startY;
-    
-    // User summary
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('User Management Summary', 20, y);
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total Users: ${data.totalUsers || 1250}`, 20, y);
-    y += 6;
-    doc.text(`Verified Users: ${data.verifiedUsers || 1235}`, 20, y);
-    y += 6;
-    doc.text(`Pending Approvals: ${data.pendingApprovals || 15}`, 20, y);
-    y += 15;
-    
-    // Pending approvals table
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Pending User Approvals', 20, y);
-    y += 10;
-    
-    const pendingData = [
-      ['Name', 'Email', 'Course', 'Batch Year', 'Registration Date'],
-      ['Maria Santos', 'maria.santos@email.com', 'BS Computer Science', '2020', '2024-01-15'],
-      ['John Dela Cruz', 'john.delacruz@email.com', 'BS Nursing', '2019', '2024-01-14'],
-      ['Ana Garcia', 'ana.garcia@email.com', 'BS Accountancy', '2021', '2024-01-13'],
-      ['Carlos Reyes', 'carlos.reyes@email.com', 'BS Engineering', '2018', '2024-01-12']
+    doc.setTextColor(40, 40, 40);
+    doc.text('Job Opportunities Summary', margin, y);
+    y += 4;
+
+    const summary = [
+      ['Metric', 'Value'],
+      ['Total Job Postings', d.totalJobs ?? 0],
+      ['Active Jobs', d.activeJobs ?? 0],
+      ['Jobs Posted This Month', d.monthlyJobs ?? 0]
     ];
-    
-    doc.autoTable({
-      startY: y,
-      head: [pendingData[0]],
-      body: pendingData.slice(1),
-      theme: 'grid',
-      headStyles: { fillColor: [233, 30, 99] },
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 45 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 25 }
-      }
-    });
+    makeTable(doc, summary[0], summary.slice(1), y + 4);
   };
-  
-  const generateNewsReport = (doc, data, startY) => {
+
+  const generateUserReport = (doc, d, startY, margin) => {
     let y = startY;
-    
-    // News summary
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('News & Announcements Summary', 20, y);
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total News Articles: ${data.totalNews || 45}`, 20, y);
-    y += 6;
-    doc.text(`Published Articles: ${data.publishedNews || 42}`, 20, y);
-    y += 6;
-    doc.text(`Draft Articles: ${data.draftNews || 3}`, 20, y);
-    y += 15;
-    
-    // Recent news table
-    doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('Recent News Articles', 20, y);
-    y += 10;
-    
-    const newsData = [
-      ['Title', 'Author', 'Status', 'Published Date'],
-      ['UIC Alumni Homecoming 2024', 'Admin', 'Published', '2024-01-15'],
-      ['New Job Opportunities Available', 'Admin', 'Published', '2024-01-14'],
-      ['Alumni Directory Update', 'Admin', 'Published', '2024-01-13'],
-      ['Professional Development Workshop', 'Admin', 'Published', '2024-01-12'],
-      ['Scholarship Opportunities', 'Admin', 'Draft', '2024-01-11']
+    doc.setTextColor(40, 40, 40);
+    doc.text('User Management Summary', margin, y);
+    y += 4;
+
+    const summary = [
+      ['Metric', 'Value'],
+      ['Total Users', d.totalUsers ?? 0],
+      ['Verified Users', d.verifiedUsers ?? 0],
+      ['Pending Approvals', d.pendingApprovals ?? 0]
     ];
-    
-    doc.autoTable({
-      startY: y,
-      head: [newsData[0]],
-      body: newsData.slice(1),
-      theme: 'grid',
-      headStyles: { fillColor: [233, 30, 99] },
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 30 }
-      }
-    });
+    makeTable(doc, summary[0], summary.slice(1), y + 4);
   };
-  
-  const generateGeneralReport = (doc, data, startY) => {
+
+  const generateNewsReport = (doc, d, startY, margin) => {
     let y = startY;
-    
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(233, 30, 99);
-    doc.text('General Portal Statistics', 20, y);
-    y += 15;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total Alumni: ${data.totalUsers || 1250}`, 20, y);
-    y += 6;
-    doc.text(`Total Job Postings: ${data.totalJobs || 89}`, 20, y);
-    y += 6;
-    doc.text(`Total News Articles: ${data.totalNews || 45}`, 20, y);
-    y += 6;
-    doc.text(`Active Users This Week: ${data.activeUsers || 892}`, 20, y);
-    y += 6;
-    doc.text(`New Registrations This Month: ${data.newRegistrations || 23}`, 20, y);
+    doc.setTextColor(40, 40, 40);
+    doc.text('News & Announcements Summary', margin, y);
+    y += 4;
+
+    const summary = [
+      ['Metric', 'Value'],
+      ['Total News Articles', d.totalNews ?? 0],
+      ['Published Articles', d.publishedNews ?? 0],
+      ['Draft Articles', d.draftNews ?? 0]
+    ];
+    makeTable(doc, summary[0], summary.slice(1), y + 4);
   };
-  
+
+  const generateGeneralReport = (doc, d, startY, margin) => {
+    let y = startY;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(40, 40, 40);
+    doc.text('General Portal Statistics', margin, y);
+
+    const rows = [
+      ['Total Alumni', d.totalUsers ?? 0],
+      ['Total Job Postings', d.totalJobs ?? 0],
+      ['Total News Articles', d.totalNews ?? 0],
+      ['Pending Approvals', d.pendingApprovals ?? 0],
+      ['Tracer Study Responses', d.tracerStudyResponses ?? 0]
+    ];
+    y = makeTable(doc, ['Metric', 'Value'], rows, y + 6) + 10;
+
+    // Tracer Study Analytics
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tracer Study - Employment Breakdown', margin, y);
+    y = makeTable(
+      doc,
+      ['Status', 'Count'],
+      [
+        ['Employed', d.employment?.employed ?? 0],
+        ['Self-employed', d.employment?.selfEmployed ?? 0],
+        ['Unemployed', d.employment?.unemployed ?? 0],
+        ['Graduate School', d.employment?.graduateSchool ?? 0]
+      ],
+      y + 4
+    ) + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tracer Study - Gender Breakdown', margin, y);
+    const genderRows = Object.entries(d.gender || {}).map(([k, v]) => [String(k), v ?? 0]);
+    makeTable(doc, ['Gender', 'Count'], genderRows.length ? genderRows : [['—', 0]], y + 4);
+  };
+
   const printPDF = () => {
     generatePDF();
-    // The PDF will be downloaded and can be printed
-    setTimeout(() => {
-      window.print();
-    }, 1000);
+    setTimeout(() => { window.print(); }, 800);
   };
-  
+
   return (
     <div className="pdf-report-controls">
-      <button 
+      <button
         className="btn btn-primary"
         onClick={generatePDF}
         style={{ marginRight: '10px' }}
       >
         <FaDownload /> Download PDF
       </button>
-      <button 
-        className="btn btn-secondary"
-        onClick={printPDF}
-      >
+      <button className="btn btn-secondary" onClick={printPDF}>
         <FaPrint /> Print Report
       </button>
     </div>

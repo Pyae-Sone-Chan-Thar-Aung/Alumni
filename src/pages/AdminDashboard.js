@@ -25,6 +25,11 @@ const AdminDashboard = () => {
   });
   const [pendingUsers, setPendingUsers] = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
+  // Invite Alumni modal state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [emailsInput, setEmailsInput] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState(null);
 
   // small UX trends for chips (purely illustrative)
   const [trends, setTrends] = useState({ users: 0, pending: 0, news: 0, jobs: 0, tracer: 0 });
@@ -345,6 +350,108 @@ const AdminDashboard = () => {
       toast.success('Registration link copied to clipboard');
     } catch (e) {
       toast.error('Copy failed');
+    }
+  };
+
+  // Invite Alumni helpers
+  const downloadInviteTemplate = () => {
+    const headers = [
+      'email', 'first_name', 'last_name', 'phone', 'course', 'batch_year', 'graduation_year', 'current_job', 'company', 'address', 'city', 'country'
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers]); // blank template (no dummy data)
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'InviteTemplate');
+    // Optional instructions sheet
+    const notes = XLSX.utils.aoa_to_sheet([
+      ['Instructions'],
+      ['- Fill rows under the headers. Only email is required.'],
+      ['- Save as CSV or XLSX and upload via Invite Alumni > Bulk Import.'],
+      ['- Then send the registration link to those emails and approve them under Pending Approvals.']
+    ]);
+    XLSX.utils.book_append_sheet(wb, notes, 'Instructions');
+    XLSX.writeFile(wb, 'alumni_invite_template.xlsx');
+  };
+  const openEmailInvite = () => {
+    const emails = (emailsInput || '')
+      .split(/[\,\n;\s]+/)
+      .map(e => e.trim())
+      .filter(e => /.+@.+\..+/.test(e));
+    if (!emails.length) {
+      toast.warn('Add at least one valid email');
+      return;
+    }
+    const link = `${window.location.origin}${process.env.PUBLIC_URL || ''}/register`;
+    const subject = 'Invitation to join the UIC CCS Alumni Portal';
+    const body = `Hi!%0D%0A%0D%0AYou are invited to join the UIC CCS Alumni Portal.%0D%0ARegister here: ${encodeURIComponent(link)}%0D%0A%0D%0AThank you.`;
+
+    // For better client compatibility, if the list is small, put recipients in the TO field; otherwise use BCC.
+    const sepList = emails.join(';'); // Outlook compatibility
+    const smallList = emails.length <= 5;
+    const url = smallList
+      ? `mailto:${encodeURIComponent(sepList)}?subject=${encodeURIComponent(subject)}&body=${body}`
+      : `mailto:?bcc=${encodeURIComponent(sepList)}&subject=${encodeURIComponent(subject)}&body=${body}`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleBulkImport = async (file) => {
+    try {
+      if (!file) return;
+      setImporting(true);
+      setImportSummary(null);
+
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      const norm = (s = '') => String(s).toLowerCase().trim().replace(/\s+/g, '_');
+      const mapRow = (r) => {
+        const out = {};
+        Object.entries(r).forEach(([k, v]) => {
+          const key = norm(k);
+          const value = (v === null || v === undefined) ? '' : String(v).trim();
+          if (['email'].includes(key)) out.email = value;
+          if (['first_name', 'firstname', 'given_name'].includes(key)) out.first_name = value;
+          if (['last_name', 'lastname', 'surname', 'family_name'].includes(key)) out.last_name = value;
+          if (['phone', 'mobile', 'contact', 'contact_number'].includes(key)) out.phone = value;
+          if (['course', 'program'].includes(key)) { out.course = value; }
+          if (['batch_year', 'batch'].includes(key)) out.batch_year = value;
+          if (['graduation_year', 'grad_year', 'year_graduated'].includes(key)) out.graduation_year = value;
+          if (['current_job', 'job_title', 'position'].includes(key)) out.current_job = value;
+          if (['company', 'employer'].includes(key)) out.company = value;
+          if (['address', 'street'].includes(key)) out.address = value;
+          if (['city', 'municipality'].includes(key)) out.city = value;
+          if (['country'].includes(key)) out.country = value;
+        });
+        out.status = 'pending';
+        return out;
+      };
+
+      const prepared = rows.map(mapRow).filter(r => r.email);
+      if (!prepared.length) {
+        toast.error('No valid rows found (need at least an email column)');
+        setImporting(false);
+        return;
+      }
+
+      const { data: upserted, error } = await supabase
+        .from('pending_registrations')
+        .upsert(prepared, { onConflict: 'email' });
+      if (error) throw error;
+
+      setImportSummary({ total: rows.length, inserted: prepared.length });
+      toast.success(`Imported ${prepared.length} record(s)`);
+    } catch (e) {
+      console.error('Bulk import failed', e);
+      toast.error(`Import failed: ${e.message || 'unknown error'}`);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -748,6 +855,14 @@ const AdminDashboard = () => {
                 </div>
               </button>
 
+              <button className="action-card gallery" onClick={() => navigate('/admin/gallery')}>
+                <div className="action-icon gallery"><FaImage /></div>
+                <div className="action-text">
+                  <div className="action-title">Manage Gallery</div>
+                  <div className="action-sub">Upload event photos</div>
+                </div>
+              </button>
+
               <button className="action-card jobs" onClick={() => navigate('/admin/jobs')}>
                 <div className="action-icon jobs"><FaBriefcase /></div>
                 <div className="action-text">
@@ -759,7 +874,7 @@ const AdminDashboard = () => {
               <button className="action-card tracer" onClick={() => navigate('/admin/tracer-study')}>
                 <div className="action-icon tracer"><FaChartBar /></div>
                 <div className="action-text">
-                  <div className="action-title">Tracer Study</div>
+                  <div className="action-title">Tracer-Study Analytics</div>
                   <div className="action-sub">Analyze alumni outcomes</div>
                 </div>
               </button>
@@ -772,14 +887,6 @@ const AdminDashboard = () => {
                 </div>
               </button>
 
-              <button className="action-card gallery" onClick={() => navigate('/admin/gallery')}>
-                <div className="action-icon gallery"><FaImage /></div>
-                <div className="action-text">
-                  <div className="action-title">Manage Gallery</div>
-                  <div className="action-sub">Upload event photos</div>
-                </div>
-              </button>
-
               <button className="action-card export" onClick={exportUsersCSV}>
                 <div className="action-icon export"><FaDownload /></div>
                 <div className="action-text">
@@ -788,7 +895,7 @@ const AdminDashboard = () => {
                 </div>
               </button>
 
-              <button className="action-card invite" onClick={() => navigate('/admin/users')}>
+              <button className="action-card invite" onClick={() => setShowInviteModal(true)}>
                 <div className="action-icon invite"><FaUserPlus /></div>
                 <div className="action-text">
                   <div className="action-title">Invite Alumni</div>
@@ -833,6 +940,7 @@ const AdminDashboard = () => {
                       totalJobs: stats.totalJobs,
                       totalNews: stats.totalNews,
                       pendingApprovals: stats.pendingApprovals,
+                      tracerStudyResponses: stats.tracerStudyResponses,
                       employment: analytics.employment,
                       gender: analytics.gender,
                       graduationYears: analytics.graduationYears
@@ -844,6 +952,59 @@ const AdminDashboard = () => {
             </div>
           </div>
 
+
+          {/* Invite Alumni Modal */}
+          {showInviteModal && (
+            <div className="modal-overlay">
+              <div className="invite-modal-content">
+                <button className="invite-panel-close" onClick={() => setShowInviteModal(false)} aria-label="Close invite panel">
+                  <FaTimes />
+                </button>
+                <div className="invite-modal-header">
+                  <h2>Invite Alumni</h2>
+                  <button className="modal-close" onClick={() => setShowInviteModal(false)}>
+                    <FaTimes />
+                  </button>
+                </div>
+                <div className="invite-modal-body">
+                  <div className="invite-sections">
+                    <div className="invite-card">
+                      <h3>Quick Email Invite</h3>
+                      <p>Paste emails (comma or newline separated). Opens your email client.</p>
+                      <textarea
+                        className="emails-textarea"
+                        rows={4}
+                        value={emailsInput}
+                        onChange={(e) => setEmailsInput(e.target.value)}
+                        placeholder="alice@example.com, bob@example.com"
+                      />
+                      <div className="invite-actions">
+                        <button className="btn btn-primary" onClick={openEmailInvite}><FaEnvelope /> Open Email</button>
+                        <button className="btn btn-secondary" onClick={copyRegistrationLink}><FaLink /> Copy Registration Link</button>
+                      </div>
+                    </div>
+
+                    <div className="invite-card">
+                      <h3>Bulk Import (CSV / Excel)</h3>
+                      <p>Upload a file with at least an email column to create pending invitations.</p>
+                      <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={(e) => handleBulkImport(e.target.files?.[0])}
+                        disabled={importing}
+                      />
+                      <div className="invite-actions">
+                        <button className="btn btn-secondary" onClick={downloadInviteTemplate}><FaDownload /> Download Template</button>
+                        {importSummary && (
+                          <span className="import-summary">Processed {importSummary.inserted}/{importSummary.total}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Pending Registrations Modal */}
           {showPendingModal && (

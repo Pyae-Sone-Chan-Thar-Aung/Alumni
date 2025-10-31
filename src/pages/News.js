@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
-import { FaSearch, FaCalendarAlt, FaTag, FaNewspaper, FaBullhorn, FaGraduationCap, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaCalendarAlt, FaTag, FaNewspaper, FaBullhorn, FaGraduationCap, FaTimes, FaFacebook } from 'react-icons/fa';
 import './News.css';
 import '../components/SearchBar.css';
 
@@ -12,6 +12,9 @@ const News = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedNews, setSelectedNews] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showFacebook, setShowFacebook] = useState(true);
+  const itemsPerPage = 9;
 
   const categories = ['All', 'Event', 'Career', 'Announcement', 'Professional Development', 'Scholarship', 'Guide'];
 
@@ -81,42 +84,57 @@ const News = () => {
     }
   };
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredNews.filter(n => !n.isImportant).length / itemsPerPage);
+  const paginatedNews = (() => {
+    const featuredIds = new Set(filteredNews.filter(n => n.isImportant).slice(0, 1).map(n => n.id));
+    const rest = filteredNews.filter(n => !featuredIds.has(n.id));
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return rest.slice(startIndex, startIndex + itemsPerPage);
+  })();
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory]);
+
   return (
     <div className="news-page">
       <div className="container">
         <div className="news-header">
-          <h1>News & Announcements</h1>
-          <p>Stay updated with the latest news, events, and opportunities from UIC</p>
+          <div>
+            <h1>News & Gallery</h1>
+            <span className="subtitle">Fetched from UIC Facebook + Internal Announcements</span>
+          </div>
         </div>
 
         <div className="news-filters">
-          <div className="search-bar-container">
-            <div className="search-bar-input-wrapper">
-              <FaSearch className="search-bar-icon" />
+          <div className="search-container">
+            <div className="search-wrapper">
+              <FaSearch className="search-icon" />
               <input
                 type="text"
-                className="search-bar-input"
+                className="search-input"
                 placeholder="Search news and announcements..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
-                <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
+                <button className="search-clear" onClick={() => setSearchTerm('')}>
                   <FaTimes />
                 </button>
               )}
             </div>
-          </div>
-          <div className="category-filters">
-            {categories.map(category => (
-              <button
-                key={category}
-                className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category)}
+            <div className="filter-dropdown">
+              <select 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="filter-select"
               >
-                {category}
-              </button>
-            ))}
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -156,97 +174,134 @@ const News = () => {
         <div className="news-grid">
           {loading && (
             <>
-              {Array.from({ length: 6 }).map((_, idx) => (
+              {Array.from({ length: 9 }).map((_, idx) => (
                 <div key={idx} className="news-card skeleton-card">
                   <div className="skeleton skeleton-image" />
-                  <div className="news-content">
-                    <div className="news-header-info">
+                  <div className="news-card-content">
+                    <div className="card-meta">
                       <span className="skeleton skeleton-pill" />
                       <span className="skeleton skeleton-text sm" />
                     </div>
                     <div className="skeleton skeleton-text lg" />
                     <div className="skeleton skeleton-text md" />
-                    <div className="news-footer">
-                      <span className="skeleton skeleton-text sm" />
-                      <span className="skeleton skeleton-text sm" />
-                    </div>
                   </div>
                 </div>
               ))}
             </>
           )}
 
-          {(() => {
-            const featuredIds = new Set(filteredNews.filter(n => n.isImportant).slice(0, 1).map(n => n.id));
-            const rest = filteredNews.filter(n => !featuredIds.has(n.id));
-            return rest.map(newsItem => (
-              <div
-                key={newsItem.id}
-                className={`news-card ${newsItem.isImportant ? 'important' : ''}`}
-                onClick={() => handleNewsClick(newsItem)}
-              >
-                {newsItem.image && (
-                  <div className="news-image">
-                    <img src={newsItem.image} alt={newsItem.title} />
-                  </div>
-                )}
-                <div className="news-content">
-                  <div className="news-header-info">
-                    <span className={`news-category ${newsItem.category.toLowerCase()}`}>
-                      {getCategoryIcon(newsItem.category)}
-                      {newsItem.category}
-                    </span>
-                    <span className="news-date">
-                      {new Date(newsItem.date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <h3>{newsItem.title}</h3>
-                  <p>{newsItem.content.substring(0, 150)}...</p>
-                  <div className="news-footer">
-                    <span className="news-author">By {newsItem.author}</span>
-                    <span className="read-more">Read More →</span>
-                  </div>
+          {!loading && paginatedNews.map(newsItem => (
+            <div
+              key={newsItem.id}
+              className="news-card"
+              onClick={() => handleNewsClick(newsItem)}
+            >
+              {newsItem.image && (
+                <div className="card-image">
+                  <img src={newsItem.image} alt={newsItem.title} />
+                </div>
+              )}
+              <div className="news-card-content">
+                <div className="card-meta">
+                  <span className={`category-badge ${newsItem.category.toLowerCase().replace(/ /g, '-')}`}>
+                    {newsItem.category}
+                  </span>
+                  <span className="card-date">
+                    {new Date(newsItem.date).toLocaleDateString()}
+                  </span>
+                </div>
+                <h3 className="card-title">{newsItem.title}</h3>
+                <p className="card-preview">{newsItem.content.substring(0, 140)}...</p>
+                <div className="card-footer">
+                  <span className="read-more-link">Read more →</span>
                 </div>
               </div>
-            ));
-          })()}
+            </div>
+          ))}
         </div>
 
-        {filteredNews.length === 0 && (
+        {!loading && filteredNews.length === 0 && (
           <div className="no-results">
             <h3>No news found</h3>
             <p>Try adjusting your search terms or category filter</p>
+          </div>
+        )}
+
+        {!loading && filteredNews.length > 0 && totalPages > 1 && (
+          <div className="pagination">
+            <button 
+              className="page-btn" 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="page-info">Page {currentPage} of {totalPages}</span>
+            <button 
+              className="page-btn" 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {/* Facebook Feed Section */}
+        {showFacebook && (
+          <div className="facebook-section">
+            <div className="section-header">
+              <h2>
+                <FaFacebook /> Latest from UIC Facebook Page
+              </h2>
+            </div>
+            <div className="facebook-embed">
+              <iframe
+                src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fuicofficial&tabs=timeline&width=500&height=600&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&appId"
+                width="100%"
+                height="600"
+                style={{ border: 'none', overflow: 'hidden' }}
+                scrolling="no"
+                frameBorder="0"
+                allowFullScreen={true}
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+              />
+            </div>
+            <div className="facebook-actions">
+              <button className="btn-primary" onClick={() => window.open('https://www.facebook.com/uicofficial', '_blank')}>
+                Visit Facebook Page
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* News Modal */}
       {selectedNews && (
-        <div className="news-modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeModal}>
-              ×
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeModal} aria-label="Close">
+              <FaTimes />
             </button>
-            <div className="modal-header">
-              <div className="modal-category">
-                {getCategoryIcon(selectedNews.category)}
-                {selectedNews.category}
-              </div>
-              <div className="modal-date">
-                {new Date(selectedNews.date).toLocaleDateString()}
-              </div>
-            </div>
-            <h2>{selectedNews.title}</h2>
-            <div className="modal-author">
-              By {selectedNews.author}
-            </div>
             {selectedNews.image && (
               <div className="modal-image">
                 <img src={selectedNews.image} alt={selectedNews.title} />
               </div>
             )}
-            <div className="modal-content-text">
-              {selectedNews.content}
+            <div className="modal-body">
+              <div className="modal-meta">
+                <span className={`category-badge ${selectedNews.category.toLowerCase().replace(/ /g, '-')}`}>
+                  {selectedNews.category}
+                </span>
+                <span className="modal-date">
+                  {new Date(selectedNews.date).toLocaleDateString()}
+                </span>
+              </div>
+              <h2 className="modal-title">{selectedNews.title}</h2>
+              <p className="modal-author">By {selectedNews.author}</p>
+              <div className="modal-text">
+                {selectedNews.content}
+              </div>
             </div>
           </div>
         </div>

@@ -16,6 +16,14 @@ const Login = () => {
   const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [approvedBannerShown, setApprovedBannerShown] = useState(false);
+  const approvedFromLink = (() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const v = (params.get('approved') || params.get('status') || '').toString().toLowerCase();
+      return v === '1' || v === 'true' || v === 'approved';
+    } catch { return false; }
+  })();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -24,6 +32,14 @@ const Login = () => {
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
+
+  // Show approval message when arriving via approval link
+  useEffect(() => {
+    if (approvedFromLink && !approvedBannerShown) {
+      toast.success('Your account has been approved by admin. Please sign in.');
+      setApprovedBannerShown(true);
+    }
+  }, [approvedFromLink, approvedBannerShown]);
 
   const handleChange = (e) => {
     setFormData({
@@ -305,7 +321,7 @@ const Login = () => {
 
       // 7) Persist session in app context
       login(appUser, auth.session?.access_token || '');
-      toast.success(`Welcome back, ${userName}!`);
+      toast.success(`Welcome ${userName}`);
 
       // Navigate based on role
       if (appUser.role === 'admin') {
@@ -345,6 +361,21 @@ const Login = () => {
             </div>
             <p className="welcome-text">Sign in to connect with your Alma Mater and fellow alumni.</p>
           </div>
+
+          {approvedFromLink && (
+            <div className="approved-banner" style={{
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              border: '1px solid #bbf7d0',
+              borderLeft: '4px solid #10b981',
+              color: '#064e3b',
+              borderRadius: 12,
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              fontSize: '0.95rem'
+            }}>
+              <strong>Good news!</strong> Your account has been approved. You can now sign in below.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="login-form">
             <div className="form-group">

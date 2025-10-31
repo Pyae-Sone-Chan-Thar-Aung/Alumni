@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import supabase from '../config/supabaseClient';
 import { toast } from 'react-toastify';
@@ -12,11 +12,10 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    studentId: '',
     phone: '',
-    batch: '',
     course: '',
     graduationYear: '',
+    employmentStatus: '',
     currentJob: '',
     company: '',
     address: '',
@@ -28,47 +27,27 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const canvasRef = useRef(null);
   const navigate = useNavigate();
 
   const courses = [
-    'BS Accountancy',
-    'BS Archiecture',
-    'BS Psychology',
-    'BS Business Administration',
     'BS Computer Science',
     'BS Information Technology',
     'BS Information Systems',
-    'BS Computer Engineering',
-    'BS Electronics Engineering',
-    'BS Civil Engineering',
-    'BS Mechanical Engineering',
-    'BS Electrical Engineering',
-    'BS Nursing',
-    'BS Medical Technology',
-    'BS Pharmacy',
-    'BS Biology',
-    'BS Chemistry',
-    'BS Mathematics',
-    'BS Physics',
-    'BS Psychology',
-    'BS Social Work',
-    'BS Education',
-    'BS Tourism Management',
-    'BS Hospitality Management',
-    'BS Commerce',
-    'BS Accounting',
-    'BS Marketing',
-    'BA Communication',
-    'BA English',
-
-    'Other'
   ];
 
-  const batches = [
-    '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015',
-    '2014', '2013', '2012', '2011', '2010', '2009', '2008', '2007', '2006', '2005',
-    '2004', '2003', '2002', '2001', '2000', '1999', '1998', '1997', '1996', '1995',
-    '1994', '1993', '1992', '1991', '1990', 'Before 1990'
+  const employmentStatuses = [
+    'Employed - Full Time',
+    'Employed - Part Time',
+    'Self-Employed',
+    'Unemployed - Looking',
+    'Unemployed - Not Looking',
+    'Student',
+    'Retired'
   ];
 
   const handleChange = (e) => {
@@ -102,6 +81,83 @@ const Register = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  const startCamera = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not supported. Use a modern browser or HTTPS.');
+      }
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: { ideal: 'user' }
+        },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          try { videoRef.current && videoRef.current.play && videoRef.current.play(); } catch {}
+        };
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      setCameraError('Unable to access camera. Please allow permission or use file upload.');
+      toast.error('Camera access denied. You can upload an image instead.');
+    }
+  };
+
+  const openCamera = () => {
+    setCameraError('');
+    setCameraOpen(true);
+  };
+
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current || document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 640;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Captured image is larger than 5MB. Try again.');
+        return;
+      }
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result);
+      reader.readAsDataURL(file);
+      closeCamera();
+    }, 'image/jpeg', 0.92);
+  };
+
+  useEffect(() => {
+    if (cameraOpen) {
+      // Start the camera after modal mounts so videoRef is available
+      startCamera();
+    }
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [cameraOpen]);
 
   const uploadProfileImage = async () => {
     if (!profileImage) return null;
@@ -194,14 +250,13 @@ const Register = () => {
         last_name: formData.lastName,
         phone: formData.phone || null,
         course: formData.course,
-        batch_year: formData.batch ? parseInt(formData.batch) : null,
         graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+        employment_status: formData.employmentStatus || null,
         current_job: formData.currentJob || null,
         company: formData.company || null,
         address: formData.address || null,
         city: formData.city || null,
         country: formData.country || 'Philippines',
-        student_id: formData.studentId || null,
         profile_image_url: profileImageUrl,
         status: 'pending'
       };
@@ -343,6 +398,9 @@ const Register = () => {
                   <label htmlFor="profileImage" className="image-upload-btn">
                     <FaUpload /> Choose Image
                   </label>
+                  <button type="button" className="image-upload-btn" onClick={openCamera}>
+                    <FaCamera /> Take Photo
+                  </button>
                   <p className="image-help-text">
                     JPG, JPEG, or PNG. Max size: 5MB
                   </p>
@@ -423,20 +481,6 @@ const Register = () => {
               <h3>Academic Information</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="studentId" className="form-label">
-                    <FaUser /> Student ID
-                  </label>
-                  <input
-                    type="text"
-                    id="studentId"
-                    name="studentId"
-                    value={formData.studentId}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="Enter your student ID (optional)"
-                  />
-                </div>
-                <div className="form-group">
                   <label htmlFor="course" className="form-label">
                     <FaGraduationCap /> Course/Program
                   </label>
@@ -454,87 +498,88 @@ const Register = () => {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="batch" className="form-label">
-                    <FaCalendarAlt /> Batch Year
+                  <label htmlFor="graduationYear" className="form-label">
+                    <FaCalendarAlt /> Graduation Year
                   </label>
-                  <select
-                    id="batch"
-                    name="batch"
-                    value={formData.batch}
+                  <input
+                    type="number"
+                    id="graduationYear"
+                    name="graduationYear"
+                    value={formData.graduationYear}
                     onChange={handleChange}
                     className="form-control"
+                    placeholder="Enter graduation year"
+                    min="1990"
+                    max={new Date().getFullYear()}
                     required
-                  >
-                    <option value="">Select your year enrolled</option>
-                    {batches.map(batch => (
-                      <option key={batch} value={batch}>{batch}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="graduationYear" className="form-label">
-                  <FaCalendarAlt /> Graduation Year
-                </label>
-                <input
-                  type="number"
-                  id="graduationYear"
-                  name="graduationYear"
-                  value={formData.graduationYear}
-                  onChange={handleChange}
-                  className="form-control"
-                  placeholder="Enter graduation year"
-                  min="1990"
-                  max="2024"
-                  required
-                />
               </div>
             </div>
 
             <div className="form-section">
               <h3>Professional Information</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="currentJob" className="form-label">
-                    Current Job Title
-                  </label>
-                  <input
-                    type="text"
-                    id="currentJob"
-                    name="currentJob"
-                    value={formData.currentJob}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="Enter your current job title"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="company" className="form-label">
-                    Company/Organization
-                  </label>
-                  <input
-                    type="text"
-                    id="company"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="Enter your company name"
-                  />
-                </div>
+              <div className="form-group">
+                <label htmlFor="employmentStatus" className="form-label">
+                  Employment Status
+                </label>
+                <select
+                  id="employmentStatus"
+                  name="employmentStatus"
+                  value={formData.employmentStatus}
+                  onChange={handleChange}
+                  className="form-control"
+                  required
+                >
+                  <option value="">Select your employment status</option>
+                  {employmentStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
               </div>
+
+              {(formData.employmentStatus &&
+                (formData.employmentStatus.includes('Employed') ||
+                  formData.employmentStatus === 'Self-Employed')) && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="currentJob" className="form-label">
+                        Current Job Title
+                      </label>
+                      <input
+                        type="text"
+                        id="currentJob"
+                        name="currentJob"
+                        value={formData.currentJob}
+                        onChange={handleChange}
+                        className="form-control"
+                        placeholder="Enter your current job title"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="company" className="form-label">
+                        Company/Organization
+                      </label>
+                      <input
+                        type="text"
+                        id="company"
+                        name="company"
+                        value={formData.company}
+                        onChange={handleChange}
+                        className="form-control"
+                        placeholder="Enter your company name"
+                      />
+                    </div>
+                  </div>
+                )}
             </div>
 
             <div className="form-section">
-              <h3>Address Information</h3>
+              <h3>Current Location Address</h3>
               <div className="form-group">
                 <label htmlFor="address" className="form-label">
-                  <FaMapMarkerAlt /> Address
+                  <FaMapMarkerAlt /> Complete Address *
                 </label>
                 <textarea
                   id="address"
@@ -542,7 +587,7 @@ const Register = () => {
                   value={formData.address}
                   onChange={handleChange}
                   className="form-control"
-                  placeholder="Enter your complete address"
+                  placeholder="Enter your current complete address"
                   rows="3"
                   required
                 />
@@ -670,6 +715,30 @@ const Register = () => {
           </div>
         </div>
       </div>
+      {cameraOpen && (
+        <div className="camera-modal">
+          <div className="camera-content">
+            <div className="camera-header">
+              <h4>Take a Photo</h4>
+              <button type="button" className="camera-close" onClick={closeCamera}>×</button>
+            </div>
+            {cameraError && <p className="camera-error">{cameraError}</p>}
+            <div className="camera-preview">
+              <video ref={videoRef} playsInline autoPlay muted />
+            </div>
+            <div className="camera-actions">
+              <button type="button" className="image-upload-btn" onClick={capturePhoto}>
+                Capture
+              </button>
+              <button type="button" className="image-upload-btn secondary" onClick={closeCamera}>
+                Cancel
+              </button>
+            </div>
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+          </div>
+          <div className="camera-backdrop" onClick={closeCamera} />
+        </div>
+      )}
     </div>
   );
 };

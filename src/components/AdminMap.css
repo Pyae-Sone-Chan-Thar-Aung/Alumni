@@ -1,0 +1,299 @@
+.admin-map-section { 
+  margin: 0; 
+  position: relative;
+}
+
+/* Map Controls */
+.map-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-map-section .filters { 
+  display: flex; 
+  gap: 12px; 
+  align-items: center; 
+}
+
+.admin-map-section .filters label { 
+  display: flex; 
+  flex-direction: column; 
+  font-size: 0.75rem; 
+  color: #6B7280;
+  font-weight: 500;
+  gap: 4px;
+}
+
+.admin-map-section .filters select { 
+  padding: 6px 10px; 
+  border-radius: 6px; 
+  border: 1px solid #E5E7EB;
+  font-size: 0.875rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-map-section .filters select:hover {
+  border-color: #3B82F6;
+}
+
+/* Geocode Actions */
+.geocode-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.geocode-btn,
+.refresh-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geocode-btn {
+  background: #3B82F6;
+  color: white;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.15);
+}
+
+.geocode-btn:hover {
+  background: #2563EB;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+}
+
+.refresh-btn {
+  background: white;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  padding: 8px 12px;
+}
+
+.refresh-btn:hover {
+  background: #F9FAFB;
+  color: #374151;
+  border-color: #D1D5DB;
+}
+
+/* Geocode Panel */
+.geocode-panel {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-header h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1F2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-header p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6B7280;
+}
+
+.geocode-progress {
+  margin-top: 12px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #F3F4F6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3B82F6, #2563EB);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.geocode-progress p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6B7280;
+  text-align: center;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-geocode-start,
+.btn-geocode-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-geocode-start {
+  background: #10B981;
+  color: white;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
+}
+
+.btn-geocode-start:hover {
+  background: #059669;
+}
+
+.btn-geocode-cancel {
+  background: white;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+}
+
+.btn-geocode-cancel:hover {
+  background: #F9FAFB;
+  color: #374151;
+}
+
+/* Map Info */
+.map-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.location-count {
+  font-size: 0.8125rem;
+  color: #6B7280;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.location-count svg {
+  color: #3B82F6;
+}
+
+.missing-count {
+  font-size: 0.8125rem;
+  color: #F59E0B;
+  font-weight: 500;
+  padding: 4px 10px;
+  background: #FEF3C7;
+  border-radius: 6px;
+  border: 1px solid #FDE68A;
+}
+
+/* Map Container */
+#alumni-map { 
+  width: 100%; 
+  height: 420px; 
+  border-radius: 10px; 
+  border: 1px solid #E5E7EB; 
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom Popup Styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 8px;
+  border: 1px solid #E5E7EB;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.leaflet-popup-tip {
+  border: 1px solid #E5E7EB;
+}
+
+.custom-popup .leaflet-popup-close-button {
+  font-size: 20px;
+  color: #9CA3AF;
+  padding: 4px 8px;
+  top: 4px;
+  right: 4px;
+}
+
+.custom-popup .leaflet-popup-close-button:hover {
+  color: #374151;
+}
+
+/* Marker Cluster Styling - Using Pin Icons */
+.marker-cluster-custom {
+  background: transparent !important;
+  border: none !important;
+  transition: transform 0.2s ease;
+}
+
+.marker-cluster-custom:hover {
+  transform: scale(1.15);
+  cursor: pointer;
+}
+
+.marker-cluster-custom svg {
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .map-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .geocode-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #alumni-map {
+    height: 350px;
+  }
+}

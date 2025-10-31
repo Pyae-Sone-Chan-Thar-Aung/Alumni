@@ -508,7 +508,7 @@ const AdminGallery = () => {
       <div className="admin-header">
         <div className="header-content">
           <h2>Gallery Management</h2>
-          <p>Create and manage photo albums for events, activities, and special occasions</p>
+          <p></p>
         </div>
         <button 
           className="btn btn-primary"

@@ -13,7 +13,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 
 // Pages
 import Home from './pages/Home';
-import News from './pages/News';
+import NewsGallery from './pages/NewsGallery';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -36,6 +36,9 @@ import Gallery from './pages/Gallery';
 import AdminGallery from './components/gallery/AdminGallery';
 import AdminJobs from './pages/AdminJobs';
 import AdminAnalytics from './pages/AdminAnalytics';
+import AdminInternalNews from './pages/AdminInternalNews';
+import AdminTracerBuilder from './pages/AdminTracerBuilder';
+import AdminGeocode from './pages/AdminGeocode';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -102,8 +105,8 @@ function AppRoutes() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
-          <Route path="/news" element={<News />} />
-          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/news" element={<NewsGallery />} />
+          <Route path="/gallery" element={<NewsGallery />} />
           <Route path="/login" element={
             isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/alumni-profile'} /> : <Login />
           } />
@@ -158,7 +161,7 @@ function AppRoutes() {
           />
           <Route 
             path="/admin/news" 
-            element={isAuthenticated && user?.role === 'admin' ? <AdminNews /> : <Navigate to="/login" />} 
+            element={isAuthenticated && (user?.role === 'admin' || user?.role === 'coordinator') ? <AdminInternalNews /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/admin/pending-registrations" 
@@ -173,12 +176,20 @@ function AppRoutes() {
             element={isAuthenticated && user?.role === 'admin' ? <AdminTracerStudy /> : <Navigate to="/" />} 
           />
           <Route 
+            path="/admin/tracer-builder" 
+            element={isAuthenticated && user?.role === 'admin' ? <AdminTracerBuilder /> : <Navigate to="/" />} 
+          />
+          <Route 
             path="/admin/jobs" 
             element={isAuthenticated && user?.role === 'admin' ? <AdminJobs /> : <Navigate to="/" />} 
           />
           <Route 
             path="/admin/analytics" 
             element={isAuthenticated && user?.role === 'admin' ? <AdminAnalytics /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/admin/geocode" 
+            element={isAuthenticated && (user?.role === 'admin' || user?.role === 'coordinator') ? <AdminGeocode /> : <Navigate to="/" />} 
           />
         </Routes>
       </main>

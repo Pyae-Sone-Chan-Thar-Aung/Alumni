@@ -55,7 +55,7 @@
 
 .batchmates-content {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr;
   gap: 2rem;
   max-width: 1400px;
   margin: 0 auto;
@@ -365,39 +365,16 @@
   align-items: stretch;
 }
 
+/* Inline stats (moved from sidebar) */
+.main-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem 0;
+}
+
 /* View Toggle - Segmented Control */
-.view-toggle {
-  display: flex;
-  background: #F3F4F6;
-  border-radius: 10px;
-  padding: 4px;
-  gap: 4px;
-}
-
-.toggle-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: none;
-  background: transparent;
-  color: #6B7280;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.875rem;
-  font-family: 'Inter', sans-serif;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: #2E2E2E;
-}
-
-.toggle-btn[aria-pressed="true"] {
-  background: white;
-  color: #009FD9;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
+/* Removed view-toggle and toggle-btn styles as list view is deprecated */
 
 /* Course Filter Pills */
 .course-chips {

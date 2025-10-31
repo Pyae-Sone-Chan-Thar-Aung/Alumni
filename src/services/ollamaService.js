@@ -3,7 +3,7 @@ class OllamaService {
   constructor() {
     // Allow override via env var (e.g., REACT_APP_OLLAMA_URL=http://localhost:11434)
     this.baseURL = process.env.REACT_APP_OLLAMA_URL || 'http://localhost:11434';
-    this.model = 'llama3.2:1b'; // Use a smaller model that fits in available memory
+    this.model = 'llama3.2:1b'; //A smaller model that fits in available memory
     this.conversationHistory = [];
   }
 

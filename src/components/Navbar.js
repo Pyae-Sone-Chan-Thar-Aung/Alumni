@@ -100,10 +100,7 @@ const Navbar = () => {
                 Home
               </NavLink>
               <NavLink to="/news" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
-                News & Announcements
-              </NavLink>
-              <NavLink to="/gallery" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
-                Gallery
+                News & Gallery
               </NavLink>
               {!isAuthenticated && (
                 <NavLink to="/register" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
@@ -118,11 +115,16 @@ const Navbar = () => {
                       Dashboard
                     </NavLink>
                   )}
-                  {user?.role === 'admin' && (
+                  {(user?.role === 'admin' || user?.role === 'coordinator') && (
                     <>
                       <NavLink to="/admin-dashboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
                         Admin Dashboard
                       </NavLink>
+                      {user?.role === 'coordinator' && (
+                        <NavLink to="/admin/news" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
+                          Internal News
+                        </NavLink>
+                      )}
                     </>
                   )}
 

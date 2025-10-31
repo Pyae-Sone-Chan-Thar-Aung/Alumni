@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabaseClient';
 import { FaUser, FaBriefcase, FaNewspaper, FaUsers, FaCalendarAlt, FaBell, FaEdit, FaHeart } from 'react-icons/fa';
 import './AlumniDashboard.css';
 
 const AlumniDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [recentNews, setRecentNews] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
@@ -58,13 +60,17 @@ const AlumniDashboard = () => {
         .from('job_opportunities')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch recent news (last 3 published articles)
-      const { data: newsData } = await supabase
-        .from('news')
+      // Fetch recent internal news (last 3 published articles for alumni)
+      const { data: newsData, error: newsError } = await supabase
+        .from('internal_news')
         .select('id, title, published_at, category')
         .eq('is_published', true)
         .order('published_at', { ascending: false })
         .limit(3);
+      
+      if (newsError) {
+        console.error('Error fetching internal news:', newsError);
+      }
 
       // Fetch recent job opportunities (last 3)
       const { data: jobsData, error: jobsError } = await supabase
@@ -294,32 +300,6 @@ const AlumniDashboard = () => {
 
             <div className="content-section">
               <div className="section-header">
-                <h2>Recent Job Opportunities</h2>
-                <a href="/job-opportunities" className="view-all">View All</a>
-              </div>
-              <div className="jobs-list">
-                {recentJobs.length > 0 ? (
-                  recentJobs.map(job => (
-                    <div key={job.id} className="job-item">
-                      <div className="job-info">
-                        <h4>{job.title}</h4>
-                        <p className="job-company">{job.company}</p>
-                        <p className="job-meta">
-                          <span className="job-field">{job.field}</span>
-                          <span className="job-location">{job.location}</span>
-                        </p>
-                      </div>
-                      <a href={`/job-opportunities/${job.id}`} className="view-job">View →</a>
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No job opportunities available at the moment.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="content-section">
-              <div className="section-header">
                 <h2><FaHeart style={{ color: '#e74c3c', marginRight: '8px' }} />Saved Jobs</h2>
                 <a href="/job-opportunities" className="view-all">View All</a>
               </div>
@@ -335,7 +315,10 @@ const AlumniDashboard = () => {
                           <span className="job-location">{job.location}</span>
                         </p>
                       </div>
-                      <a href="/job-opportunities" className="view-job">View →</a>
+                      <a href="/job-opportunities" className="view-job" onClick={(e) => {
+                        e.preventDefault();
+                        navigate('/job-opportunities');
+                      }}>View →</a>
                     </div>
                   ))
                 ) : (

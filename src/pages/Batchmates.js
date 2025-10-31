@@ -9,7 +9,6 @@ import '../components/SearchBar.css';
 const Batchmates = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('grid');
   const [selectedCourse, setSelectedCourse] = useState('All');
   const [showBatchmatesOnly, setShowBatchmatesOnly] = useState(false);
   const [batchmates, setBatchmates] = useState([]);
@@ -21,7 +20,7 @@ const Batchmates = () => {
   const [messageContent, setMessageContent] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [itemsPerPage] = useState(12);
 
   // Load all alumni and current user info
   useEffect(() => {
@@ -355,26 +354,6 @@ const Batchmates = () => {
         </div>
 
         <div className="batchmates-content">
-          <div className="sidebar">
-            <div className="alumni-stats">
-              <h3>Alumni Statistics</h3>
-              <div className="stats-card">
-                <div className="stat-item">
-                  <span className="stat-number">{batchmates.length}</span>
-                  <span className="stat-label">Total Alumni</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">{new Set(batchmates.map(b => b.batchYear)).size}</span>
-                  <span className="stat-label">Batch Years</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">{new Set(batchmates.map(b => b.course)).size}</span>
-                  <span className="stat-label">Programs</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="main-content">
             <div className="content-header">
               <div className="search-section">
@@ -396,11 +375,20 @@ const Batchmates = () => {
                   </div>
                 </div>
               </div>
-              <div className="controls-section">
-                <div className="view-toggle">
-                  <button className="toggle-btn" onClick={() => setViewMode('grid')} aria-pressed={viewMode==='grid'}>Grid</button>
-                  <button className="toggle-btn" onClick={() => setViewMode('list')} aria-pressed={viewMode==='list'}>List</button>
+              
+              {/* Inline stats moved to main panel */}
+              <div className="main-stats">
+                <div className="stat-item">
+                  <span className="stat-number">{batchmates.length}</span>
+                  <span className="stat-label">Total Alumni</span>
                 </div>
+                <div className="stat-item">
+                  <span className="stat-number">{new Set(batchmates.map(b => b.batchYear)).size}</span>
+                  <span className="stat-label">Batch Years</span>
+                </div>
+              </div>
+
+              <div className="controls-section">
                 <div className="course-chips">
                   <button 
                     className={`chip ${showBatchmatesOnly?'active':''}`} 
@@ -413,12 +401,9 @@ const Batchmates = () => {
                   ))}
                 </div>
               </div>
-              {/* Remove create group session */}
-            </div>
 
-            <div className="batchmates-grid">
-              <h2>All Alumni ({filteredBatchmates.length})</h2>
-              {viewMode === 'grid' ? (
+              <div className="batchmates-grid">
+                <h2>All Alumni ({filteredBatchmates.length})</h2>
                 <div className="members-grid">
                   {currentBatchmates.map(batchmate => (
                     <div key={batchmate.id} className="member-card">
@@ -467,80 +452,58 @@ const Batchmates = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="members-list">
-                  <div className="list-header">
-                    <span>Name</span>
-                    <span>Course</span>
-                    <span>Batch</span>
-                    <span>Job</span>
-                    <span>Location</span>
-                    <span>Active</span>
+
+                {filteredBatchmates.length === 0 && (
+                  <div className="no-results">
+                    <h3>No alumni found</h3>
+                    <p>Try adjusting your search terms or filters</p>
                   </div>
-                  {filteredBatchmates.map(batchmate => (
-                    <div key={batchmate.id} className="list-row">
-                      <span>{batchmate.name}</span>
-                      <span>{batchmate.course}</span>
-                      <span>{batchmate.batchYear}</span>
-                      <span>{batchmate.currentJob} {batchmate.company ? `at ${batchmate.company}` : ''}</span>
-                      <span>{batchmate.location}</span>
-                      <span>{batchmate.lastActive}</span>
+                )}
+
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button 
+                      className="pagination-btn"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </button>
+                    
+                    <div className="pagination-numbers">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNumber;
+                        if (totalPages <= 5) {
+                          pageNumber = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNumber = totalPages - 4 + i;
+                        } else {
+                          pageNumber = currentPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNumber}
+                            className={`pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
+                            onClick={() => goToPage(pageNumber)}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {filteredBatchmates.length === 0 && (
-                <div className="no-results">
-                  <h3>No alumni found</h3>
-                  <p>Try adjusting your search terms or filters</p>
-                </div>
-              )}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <button 
-                    className="pagination-btn"
-                    onClick={() => goToPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </button>
-                  
-                  <div className="pagination-numbers">
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      let pageNumber;
-                      if (totalPages <= 5) {
-                        pageNumber = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNumber = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNumber = totalPages - 4 + i;
-                      } else {
-                        pageNumber = currentPage - 2 + i;
-                      }
-                      return (
-                        <button
-                          key={pageNumber}
-                          className={`pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
-                          onClick={() => goToPage(pageNumber)}
-                        >
-                          {pageNumber}
-                        </button>
-                      );
-                    })}
+                    
+                    <button 
+                      className="pagination-btn"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </button>
                   </div>
-                  
-                  <button 
-                    className="pagination-btn"
-                    onClick={() => goToPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

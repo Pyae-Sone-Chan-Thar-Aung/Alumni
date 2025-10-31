@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { supabase } from '../config/supabaseClient';
-import { FaCheck, FaTimes, FaEye, FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaBuilding, FaMapMarkerAlt, FaClock, FaSpinner } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaEye, FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaBuilding, FaMapMarkerAlt, FaClock, FaSpinner, FaSearch, FaChevronLeft, FaChevronRight, FaUserCheck } from 'react-icons/fa';
 import './AdminPendingRegistrations.css';
+
+const PAGE_SIZE = 10;
 
 const AdminPendingRegistrations = () => {
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
@@ -10,6 +12,8 @@ const AdminPendingRegistrations = () => {
   const [selectedRegistration, setSelectedRegistration] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchPendingRegistrations();
@@ -266,6 +270,27 @@ const AdminPendingRegistrations = () => {
     });
   };
 
+  // Filter and pagination logic
+  const getFilteredRegistrations = () => {
+    if (!searchTerm) return pendingRegistrations;
+    
+    const term = searchTerm.toLowerCase();
+    return pendingRegistrations.filter(reg => 
+      reg.first_name?.toLowerCase().includes(term) ||
+      reg.last_name?.toLowerCase().includes(term) ||
+      reg.email?.toLowerCase().includes(term) ||
+      reg.profile?.course?.toLowerCase().includes(term) ||
+      reg.profile?.company?.toLowerCase().includes(term)
+    );
+  };
+
+  const filteredRegistrations = getFilteredRegistrations();
+  const totalPages = Math.ceil(filteredRegistrations.length / PAGE_SIZE);
+  const paginatedRegistrations = filteredRegistrations.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   if (loading) {
     return (
       <div className="admin-pending-page">
@@ -279,104 +304,197 @@ const AdminPendingRegistrations = () => {
 
   return (
     <div className="admin-pending-page">
-      <div className="page-header">
-        <h1>Pending Alumni Registrations</h1>
-        <p>Review and approve new alumni registration requests</p>
-        <div className="stats-summary">
-          <div className="stat-card">
-            <span className="stat-number">{pendingRegistrations.length}</span>
-            <span className="stat-label">Pending Approvals</span>
+      {/* Header */}
+      <div className="dashboard-header">
+        <div className="header-content">
+          <div className="header-main">
+            <FaUserCheck className="header-icon" />
+            <div className="header-text">
+              <h1>Pending Account Approvals</h1>
+              <p>Review and approve new alumni registration requests</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {pendingRegistrations.length === 0 ? (
-        <div className="empty-state">
-          <FaUser size={60} />
-          <h3>No Pending Registrations</h3>
-          <p>All registration requests have been processed.</p>
+      {/* Stats */}
+      <div className="stats-overview">
+        <div className="metric-card primary">
+          <div className="metric-icon">
+            <FaUser />
+          </div>
+          <div className="metric-content">
+            <div className="metric-value">{pendingRegistrations.length}</div>
+            <div className="metric-label">Pending Approvals</div>
+            <div className="metric-trend">Awaiting review</div>
+          </div>
         </div>
-      ) : (
-        <div className="registrations-grid">
-          {pendingRegistrations.map((registration) => (
-            <div key={`${registration.kind}:${registration.id}`} className="registration-card">
-              <div className="card-header">
-                <div className="user-info">
-                  {registration.profile?.profile_image_url ? (
-                    <img 
-                      src={registration.profile.profile_image_url} 
-                      alt="Profile" 
-                      className="profile-image"
-                    />
-                  ) : (
-                    <div className="profile-placeholder">
-                      <FaUser />
+      </div>
+
+      {/* Search */}
+      <div className="filters-section">
+        <div className="filters-top-row">
+          <div className="search-box">
+            <FaSearch className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by name, email, course, or company..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Registrations Table */}
+      <div className="responses-section">
+        <div className="section-header">
+          <h3>Pending Registrations ({filteredRegistrations.length})</h3>
+        </div>
+
+        {filteredRegistrations.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <FaUser />
+            </div>
+            <h3>No Pending Registrations</h3>
+            <p>
+              {searchTerm 
+                ? 'No registrations match your search criteria.'
+                : 'All registration requests have been processed.'}
+            </p>
+            {searchTerm && (
+              <button 
+                className="btn btn-outline-primary"
+                onClick={() => setSearchTerm('')}
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="responses-table">
+              <div className="table-header" role="row">
+                <div>Applicant</div>
+                <div>Contact</div>
+                <div>Academic Info</div>
+                <div>Employment</div>
+                <div>Location</div>
+                <div>Registered</div>
+                <div>Actions</div>
+              </div>
+
+              <div className="table-body" role="rowgroup">
+                {paginatedRegistrations.map((registration) => {
+                  const fullName = `${registration.first_name || ''} ${registration.last_name || ''}`.trim() || 'N/A';
+                  
+                  return (
+                    <div className="table-row" role="row" key={`${registration.kind}:${registration.id}`}>
+                      {/* Applicant Column */}
+                      <div className="graduate-info">
+                        <div className="name">{fullName}</div>
+                        <div className="sub">{registration.email}</div>
+                      </div>
+
+                      {/* Contact Column */}
+                      <div className="contact-info">
+                        <div className="info-item">
+                          <FaPhone style={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                          <span>{registration.profile?.phone || '—'}</span>
+                        </div>
+                        <div className="info-item">
+                          <FaEnvelope style={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                          <span>{registration.email}</span>
+                        </div>
+                      </div>
+
+                      {/* Academic Info Column */}
+                      <div className="program-info">
+                        <strong>{registration.profile?.course || '—'}</strong>
+                        <div className="year">
+                          Batch: {registration.profile?.batch_year || registration.profile?.graduation_year || 'N/A'}
+                        </div>
+                      </div>
+
+                      {/* Employment Column */}
+                      <div className="company-info">
+                        <strong>{registration.profile?.current_job || '—'}</strong>
+                        {registration.profile?.company && <p>{registration.profile.company}</p>}
+                      </div>
+
+                      {/* Location Column */}
+                      <div className="location-info">
+                        <FaMapMarkerAlt />
+                        <span>{registration.profile?.city || registration.profile?.address || '—'}</span>
+                      </div>
+
+                      {/* Registered Date Column */}
+                      <div className="date-info">
+                        <FaClock />
+                        <span>{formatDate(registration.registration_date)}</span>
+                      </div>
+
+                      {/* Actions Column */}
+                      <div className="col-actions">
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => viewDetails(registration)}
+                          title="View Details"
+                        >
+                          <FaEye /> View
+                        </button>
+                        <button
+                          className="btn btn-success-sm"
+                          onClick={() => handleApproval(registration, true)}
+                          disabled={processingId === registration.id}
+                          title="Approve"
+                        >
+                          {processingId === registration.id ? <FaSpinner className="spin" /> : <FaCheck />}
+                        </button>
+                        <button
+                          className="btn btn-danger-sm"
+                          onClick={() => handleApproval(registration, false)}
+                          disabled={processingId === registration.id}
+                          title="Reject"
+                        >
+                          {processingId === registration.id ? <FaSpinner className="spin" /> : <FaTimes />}
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="user-details">
-                    <h3>{registration.first_name} {registration.last_name}</h3>
-                    <p className="email">{registration.email}</p>
-                    <p className="registration-date">
-                      <FaClock /> Registered: {formatDate(registration.registration_date)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-body">
-                <div className="info-grid">
-                  <div className="info-item">
-                    <FaGraduationCap />
-                    <span>{registration.profile?.course || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <FaPhone />
-                    <span>{registration.profile?.phone || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <FaBuilding />
-                    <span>{registration.profile?.company || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <FaMapMarkerAlt />
-                    <span>{registration.profile?.city || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-actions" style={{ padding: '1.5rem', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb', gap: '1rem' }}>
-                <button
-                  onClick={() => viewDetails(registration)}
-                  className="btn btn-secondary"
-                  style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#6b7280', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', minWidth: '140px', justifyContent: 'center' }}
-                >
-                  <FaEye /> View Details
-                </button>
-                <div className="action-buttons" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                  <button
-                    onClick={() => handleApproval(registration, false)}
-                    className="btn btn-danger"
-                    disabled={processingId === registration.id}
-                    style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#fca5a5', color: '#7f1d1d', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 8px rgba(252,165,165,0.3)', minWidth: '140px', justifyContent: 'center', transition: 'all 0.25s ease' }}
-                  >
-                    {processingId === registration.id ? <FaSpinner className="spin" /> : <FaTimes />}
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleApproval(registration, true)}
-                    className="btn btn-success"
-                    disabled={processingId === registration.id}
-                    style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#86efac', color: '#14532d', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '1rem', fontWeight: '600', boxShadow: '0 2px 8px rgba(134,239,172,0.3)', minWidth: '140px', justifyContent: 'center', transition: 'all 0.25s ease' }}
-                  >
-                    {processingId === registration.id ? <FaSpinner className="spin" /> : <FaCheck />}
-                    Approve
-                  </button>
-                </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination-controls">
+                <button 
+                  className="page-btn" 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                  disabled={currentPage === 1}
+                >
+                  <FaChevronLeft /> Prev
+                </button>
+                <span className="page-info">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className="page-btn" 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                  disabled={currentPage === totalPages}
+                >
+                  Next <FaChevronRight />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Details Modal */}
       {showModal && selectedRegistration && (

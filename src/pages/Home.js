@@ -105,40 +105,6 @@ College of Computer Studies graduates worldwide.`}
         </div>
       </section>
 
-      {/* Important News Section */}
-      <section className="important-news">
-        <div className="container">
-          <h2>Important Announcements</h2>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <p>Loading announcements...</p>
-            </div>
-          ) : featuredNews.length > 0 ? (
-            <div className="news-grid">
-              {featuredNews.slice(0, 3).map(news => (
-                <div key={news.id} className={`news-card ${news.is_important ? 'important' : ''}`}>
-                  {news.image_url && (
-                    <div className="news-image">
-                      <img src={news.image_url} alt={news.title} />
-                    </div>
-                  )}
-                  <div className="news-header">
-                    <span className="news-category">{news.category}</span>
-                    <span className="news-date">{new Date(news.published_at || news.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <h3>{news.title}</h3>
-                  <p>{news.excerpt || news.content?.substring(0, 150) + '...'}</p>
-                  <Link to="/news" className="read-more">Read More →</Link>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <p>No announcements available at this time.</p>
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* Features Section */}
       <section className="features">
@@ -174,11 +140,11 @@ College of Computer Studies graduates worldwide.`}
 
             <div className="feature-card">
               <div className="feature-icon">
-                <FaGraduationCap />
+                <FaCalendarAlt />
               </div>
-              <h3>Professional Development</h3>
-              <p>Access workshops, seminars, and training programs to enhance your skills.</p>
-              <Link to="/news" className="feature-link">View Programs</Link>
+              <h3>Alumni Events & Announcements</h3>
+              <p>Create and join alumni events with notifications. Announcements are filtered to alumni‑relevant events and sourced from the UIC website and official Facebook pages.</p>
+              <Link to="/news" className="feature-link">Browse Events</Link>
             </div>
           </div>
         </div>

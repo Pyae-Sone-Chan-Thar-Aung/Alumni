@@ -1,0 +1,9 @@
+.admin-geocode { padding: 24px; }
+.admin-geocode .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.admin-geocode .actions { display: flex; gap: 8px; }
+.admin-geocode .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.admin-geocode .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+.admin-geocode .progress { display: flex; gap: 16px; margin: 12px 0; color: #4b5563; }
+.admin-geocode .table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
+.admin-geocode .table { width: 100%; border-collapse: collapse; }
+.admin-geocode .table th, .admin-geocode .table td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 14px; }

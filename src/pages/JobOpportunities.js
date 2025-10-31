@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaBriefcase, FaMapMarkerAlt, FaBuilding, FaClock, FaDollarSign, FaPlus, FaSearch, FaHeart, FaShare, FaTimes, FaSave } from 'react-icons/fa';
+import { FaBriefcase, FaMapMarkerAlt, FaBuilding, FaClock, FaPlus, FaSearch, FaHeart, FaShare, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import './JobOpportunities.css';
 import '../components/SearchBar.css';
 import supabase from '../config/supabaseClient';
+import JobSubmission from '../components/JobSubmission';
 
 const JobOpportunities = () => {
   const navigate = useNavigate();
@@ -18,17 +19,8 @@ const JobOpportunities = () => {
   const [jobs, setJobs] = useState([]);
   const [locations, setLocations] = useState(['All']);
   const [types] = useState(['All', 'Full-time']);
-  const [showJobForm, setShowJobForm] = useState(false);
-  const [jobFormData, setJobFormData] = useState({
-    title: '',
-    company: '',
-    location: '',
-    job_type: 'Full-time',
-    salary_range: '',
-    description: '',
-    requirements: ''
-  });
-  const [formLoading, setFormLoading] = useState(false);
+  const [showJobSubmission, setShowJobSubmission] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -36,6 +28,7 @@ const JobOpportunities = () => {
         .from('job_opportunities')
         .select('*')
         .eq('is_active', true)
+        .eq('approval_status', 'approved') // Only show approved jobs
         .order('created_at', { ascending: false });
       const mapped = (data || []).map(j => ({
         id: j.id,
@@ -46,13 +39,16 @@ const JobOpportunities = () => {
         salary: j.salary_range,
         description: j.description,
         requirements: j.requirements ? j.requirements.split(',').map(s => s.trim()) : [],
-        postedDate: j.created_at
+        postedDate: j.created_at,
+        submissionType: j.submission_type,
+        submissionFileUrl: j.submission_file_url,
+        submissionImageUrl: j.submission_image_url
       }));
       setJobs(mapped);
       const locs = Array.from(new Set(mapped.map(j => j.location).filter(Boolean))).sort();
       setLocations(['All', ...locs]);
     };
-    
+
     const fetchSavedJobs = async () => {
       if (user?.id) {
         const { data } = await supabase
@@ -64,58 +60,58 @@ const JobOpportunities = () => {
         }
       }
     };
-    
+
     fetchJobs();
     fetchSavedJobs();
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   const jobFields = [
-    { 
-      id: 'tech', 
-      name: 'Technology Field', 
-      icon: '💻', 
+    {
+      id: 'tech',
+      name: 'Technology Field',
+      icon: '💻',
       color: '#3b82f6',
       keywords: ['software', 'developer', 'programmer', 'tech', 'it', 'computer', 'coding', 'programming', 'web', 'mobile', 'app', 'system', 'database', 'network', 'cyber', 'digital', 'data', 'analyst', 'engineer', 'frontend', 'backend', 'fullstack', 'ui', 'ux', 'designer']
     },
-    { 
-      id: 'medical', 
-      name: 'Medical Field', 
-      icon: '🏥', 
+    {
+      id: 'medical',
+      name: 'Medical Field',
+      icon: '🏥',
       color: '#ef4444',
       keywords: ['medical', 'health', 'doctor', 'nurse', 'physician', 'healthcare', 'hospital', 'clinic', 'pharmacy', 'therapy', 'treatment', 'patient', 'medicine', 'nursing', 'medical technology', 'healthcare', 'wellness']
     },
-    { 
-      id: 'governance', 
-      name: 'Governance Field', 
-      icon: '🏛️', 
+    {
+      id: 'governance',
+      name: 'Governance Field',
+      icon: '🏛️',
       color: '#8b5cf6',
       keywords: ['government', 'public', 'policy', 'administration', 'governance', 'civil', 'service', 'municipal', 'city', 'provincial', 'national', 'federal', 'bureau', 'department', 'agency', 'official', 'public service']
     },
-    { 
-      id: 'engineering', 
-      name: 'Engineering Field', 
-      icon: '⚙️', 
+    {
+      id: 'engineering',
+      name: 'Engineering Field',
+      icon: '⚙️',
       color: '#f59e0b',
       keywords: ['engineer', 'engineering', 'mechanical', 'electrical', 'civil', 'chemical', 'industrial', 'construction', 'design', 'technical', 'project', 'infrastructure', 'building', 'machinery', 'equipment', 'manufacturing']
     },
-    { 
-      id: 'teaching', 
-      name: 'Teaching Field', 
-      icon: '📚', 
+    {
+      id: 'teaching',
+      name: 'Teaching Field',
+      icon: '📚',
       color: '#10b981',
       keywords: ['teacher', 'teaching', 'education', 'instructor', 'professor', 'educator', 'school', 'university', 'college', 'academic', 'student', 'learning', 'curriculum', 'training', 'tutor', 'mentor', 'faculty']
     },
-    { 
-      id: 'entertainment', 
-      name: 'Entertainment Industry', 
-      icon: '🎬', 
+    {
+      id: 'entertainment',
+      name: 'Entertainment Industry',
+      icon: '🎬',
       color: '#ec4899',
       keywords: ['entertainment', 'media', 'film', 'movie', 'television', 'tv', 'radio', 'music', 'artist', 'actor', 'actress', 'director', 'producer', 'creative', 'content', 'broadcast', 'journalism', 'news', 'reporter']
     },
-    { 
-      id: 'business', 
-      name: 'Business Field', 
-      icon: '💼', 
+    {
+      id: 'business',
+      name: 'Business Field',
+      icon: '💼',
       color: '#06b6d4',
       keywords: ['business', 'management', 'marketing', 'sales', 'finance', 'accounting', 'banking', 'retail', 'commerce', 'entrepreneur', 'startup', 'corporate', 'executive', 'manager', 'analyst', 'consultant', 'administrative']
     }
@@ -132,9 +128,9 @@ const JobOpportunities = () => {
     const matchesField = !selectedField || (() => {
       const selectedFieldData = jobFields.find(f => f.id === selectedField);
       if (!selectedFieldData) return false;
-      
+
       const jobText = `${job.title} ${job.company} ${job.description || ''}`.toLowerCase();
-      return selectedFieldData.keywords.some(keyword => 
+      return selectedFieldData.keywords.some(keyword =>
         jobText.includes(keyword.toLowerCase())
       );
     })();
@@ -146,93 +142,24 @@ const JobOpportunities = () => {
   });
 
   const handlePostJob = () => {
-    if (user?.role === 'admin') {
-      setShowJobForm(true);
+    if (!user) {
+      toast.info('Please log in to share job opportunities.');
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'admin' || user.role === 'coordinator') {
+      // Admins and coordinators can post directly (they'll use admin panel)
+      navigate('/admin/jobs');
+    } else if (user.role === 'alumni' && user.approval_status === 'approved') {
+      // Alumni can submit jobs for review
+      setShowJobSubmission(true);
     } else {
-      toast.info('Only administrators can post job opportunities. Please contact the admin.');
+      toast.info('Your account needs to be approved to share job opportunities.');
     }
   };
 
-  const handleJobFormChange = (e) => {
-    setJobFormData({
-      ...jobFormData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleJobFormSubmit = async (e) => {
-    e.preventDefault();
-    setFormLoading(true);
-
-    try {
-      const { error } = await supabase
-        .from('job_opportunities')
-        .insert({
-          title: jobFormData.title,
-          company: jobFormData.company,
-          location: jobFormData.location,
-          job_type: jobFormData.job_type,
-          salary_range: jobFormData.salary_range,
-          description: jobFormData.description,
-          requirements: jobFormData.requirements,
-          posted_by: user.id,
-          is_active: true
-        });
-
-      if (error) {
-        toast.error('Error posting job: ' + error.message);
-        return;
-      }
-
-      toast.success('Job posted successfully!');
-      setShowJobForm(false);
-      setJobFormData({
-        title: '',
-        company: '',
-        location: '',
-        job_type: 'Full-time',
-        salary_range: '',
-        description: '',
-        requirements: ''
-      });
-
-      // Refresh jobs list
-      const { data } = await supabase
-        .from('job_opportunities')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      setJobs((data || []).map(j => ({
-        id: j.id,
-        title: j.title,
-        company: j.company,
-        location: j.location,
-        type: j.job_type || 'Full-time',
-        salary: j.salary_range,
-        description: j.description,
-        requirements: j.requirements ? j.requirements.split(',').map(s => s.trim()) : [],
-        postedDate: j.created_at
-      })));
-
-    } catch (error) {
-      toast.error('Unexpected error posting job');
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const closeJobForm = () => {
-    setShowJobForm(false);
-    setJobFormData({
-      title: '',
-      company: '',
-      location: '',
-      job_type: 'Full-time',
-      salary_range: '',
-      description: '',
-      requirements: ''
-    });
-  };
+  // Legacy job form handlers removed in favor of JobSubmission component
 
   const handleApplyJob = (job) => {
     window.open('https://www.uic.edu.ph/tag/uic-alumni-excellence/', '_blank');
@@ -298,69 +225,64 @@ const JobOpportunities = () => {
         </div>
 
         <div className="search-section">
-          <div className="search-bar-container">
-            <div className="search-bar-input-wrapper">
-              <FaSearch className="search-bar-icon" />
-              <input
-                type="text"
-                className="search-bar-input"
-                placeholder="Search jobs by title or company..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
-                  <FaTimes />
-                </button>
-              )}
+          <div className="search-row">
+            <div className="search-bar-container">
+              <div className="search-bar-input-wrapper">
+                <FaSearch className="search-bar-icon" />
+                <input
+                  type="text"
+                  className="search-bar-input"
+                  placeholder="Search jobs by title or company..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button className="search-bar-clear" onClick={() => setSearchTerm('')}>
+                    <FaTimes />
+                  </button>
+                )}
+              </div>
             </div>
+            <button className="btn btn-primary" onClick={handlePostJob}>
+              <FaPlus /> {user?.role === 'alumni' ? 'Share Job' : 'Post a Job'}
+            </button>
           </div>
           <div className="filters-box">
-            <select className="filter-select" value={selectedLocation} onChange={(e)=>setSelectedLocation(e.target.value)}>
-              {locations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
-            <select className="filter-select" value={selectedType} onChange={(e)=>setSelectedType(e.target.value)}>
-              {types.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <button className="btn btn-primary" onClick={handlePostJob}>
-            <FaPlus /> Post a Job
-          </button>
-        </div>
-
-        <div className="job-fields">
-          <h2>Browse by Field</h2>
-          <div className="fields-grid">
-            {jobFields.map(field => {
-              // Calculate job count for this field
-              const fieldJobCount = jobs.filter(job => {
-                const jobText = `${job.title} ${job.company} ${job.description || ''}`.toLowerCase();
-                return field.keywords.some(keyword => 
-                  jobText.includes(keyword.toLowerCase())
-                );
-              }).length;
-
-              return (
-                <div
-                  key={field.id}
-                  className={`field-card ${selectedField === field.id ? 'active' : ''}`}
-                  onClick={() => setSelectedField(selectedField === field.id ? null : field.id)}
-                  style={{ borderColor: field.color }}
-                >
-                  <div className="field-icon" style={{ backgroundColor: field.color }}>
-                    {field.icon}
-                  </div>
-                  <h3>{field.name}</h3>
-                  <p>{fieldJobCount} opportunities</p>
-                </div>
-              );
-            })}
+            <label className="filter-label">Field
+              <select className="filter-select" aria-label="Filter by field" value={selectedField || ''} onChange={(e) => setSelectedField(e.target.value || null)}>
+                <option value="">All Fields</option>
+                {jobFields.map(field => {
+                  const fieldJobCount = jobs.filter(job => {
+                    const jobText = `${job.title} ${job.company} ${job.description || ''}`.toLowerCase();
+                    return field.keywords.some(keyword =>
+                      jobText.includes(keyword.toLowerCase())
+                    );
+                  }).length;
+                  return (
+                    <option key={field.id} value={field.id}>
+                      {field.icon} {field.name} ({fieldJobCount})
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <label className="filter-label">Location
+              <select className="filter-select" aria-label="Filter by location" value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)}>
+                {locations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+            </label>
+            <label className="filter-label">Type
+              <select className="filter-select" aria-label="Filter by job type" value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+                {types.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
+
 
         <div className="jobs-section">
           <div className="section-header">
@@ -386,12 +308,40 @@ const JobOpportunities = () => {
                   <span>{job.location}</span>
                 </div>
                 <div className="job-salary">
-                  <FaDollarSign />
+                  <span style={{ fontWeight: '600', marginRight: '2px' }}>₱</span>
                   <span>{job.salary}</span>
                 </div>
                 <p className="job-description">{job.description}</p>
-                
-                {job.requirements && (
+
+                {/* Display submission file or image if available */}
+                {job.submissionType === 'pdf' && job.submissionFileUrl && (
+                  <div className="job-attachment">
+                    <h4>Job Posting Document:</h4>
+                    <a
+                      href={job.submissionFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="attachment-link pdf"
+                    >
+                      📄 View PDF Document
+                    </a>
+                  </div>
+                )}
+
+                {job.submissionType === 'image' && job.submissionImageUrl && (
+                  <div className="job-attachment">
+                    <h4>Job Posting Image:</h4>
+                    <img
+                      src={job.submissionImageUrl}
+                      alt="Job posting"
+                      className="job-posting-image"
+                      onClick={() => window.open(job.submissionImageUrl, '_blank')}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </div>
+                )}
+
+                {job.requirements && job.requirements.length > 0 && (
                   <div className="job-requirements">
                     <h4>Requirements:</h4>
                     <div className="requirements-tags">
@@ -401,25 +351,25 @@ const JobOpportunities = () => {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="job-meta">
                   <span className="posted-date">Posted: {new Date(job.postedDate).toLocaleDateString()}</span>
                 </div>
-                
+
                 <div className="job-actions">
-                  <button 
+                  <button
                     className="btn btn-primary"
                     onClick={() => handleApplyJob(job)}
                   >
                     Apply Now
                   </button>
-                  <button 
+                  <button
                     className={`btn btn-outline ${savedJobs.includes(job.id) ? 'saved' : ''}`}
                     onClick={() => handleSaveJob(job.id)}
                   >
                     <FaHeart /> {savedJobs.includes(job.id) ? 'Saved' : 'Save Job'}
                   </button>
-                  <button 
+                  <button
                     className="btn btn-outline"
                     onClick={() => handleShareJob(job)}
                   >
@@ -439,127 +389,19 @@ const JobOpportunities = () => {
         </div>
       </div>
 
-      {/* Job Posting Modal */}
-      {showJobForm && (
-        <div className="job-form-modal">
-          <div className="job-form-container">
-            <div className="job-form-header">
-              <h2>Post New Job Opportunity</h2>
-              <button className="close-btn" onClick={closeJobForm}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <form onSubmit={handleJobFormSubmit} className="job-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="title">Job Title *</label>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    value={jobFormData.title}
-                    onChange={handleJobFormChange}
-                    required
-                    placeholder="e.g., Software Engineer"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="company">Company *</label>
-                  <input
-                    type="text"
-                    id="company"
-                    name="company"
-                    value={jobFormData.company}
-                    onChange={handleJobFormChange}
-                    required
-                    placeholder="e.g., TechCorp Inc."
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="location">Location *</label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={jobFormData.location}
-                    onChange={handleJobFormChange}
-                    required
-                    placeholder="e.g., Davao City, Philippines"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="job_type">Employment Type *</label>
-                  <select
-                    id="job_type"
-                    name="job_type"
-                    value={jobFormData.job_type}
-                    onChange={handleJobFormChange}
-                    required
-                  >
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="salary_range">Salary Range</label>
-                <input
-                  type="text"
-                  id="salary_range"
-                  name="salary_range"
-                  value={jobFormData.salary_range}
-                  onChange={handleJobFormChange}
-                  placeholder="e.g., ₱25,000 - ₱35,000"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description">Job Description *</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={jobFormData.description}
-                  onChange={handleJobFormChange}
-                  required
-                  rows="4"
-                  placeholder="Describe the role, responsibilities, and what the candidate will do. Include contact information (email/phone) if needed..."
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="requirements">Requirements</label>
-                <textarea
-                  id="requirements"
-                  name="requirements"
-                  value={jobFormData.requirements}
-                  onChange={handleJobFormChange}
-                  rows="3"
-                  placeholder="List requirements separated by commas (e.g., Bachelor's degree, 2 years experience, Python knowledge)"
-                />
-              </div>
-
-
-              <div className="form-actions">
-                <button type="button" className="btn btn-outline" onClick={closeJobForm}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={formLoading}>
-                  <FaSave /> {formLoading ? 'Posting...' : 'Post Job'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Job Submission Modal for Alumni */}
+      {showJobSubmission && (
+        <JobSubmission
+          onClose={() => setShowJobSubmission(false)}
+          onSuccess={() => {
+            setRefreshTrigger(prev => prev + 1);
+          }}
+        />
       )}
+
+      {/* Legacy Job Posting Modal removed */}
     </div>
   );
 };
 
-export default JobOpportunities; 
+export default JobOpportunities;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { FaBriefcase, FaPlus, FaEdit, FaTrash, FaEye, FaSearch, FaFilter, FaMapMarkerAlt, FaBuilding, FaDollarSign } from 'react-icons/fa';
+import { FaBriefcase, FaPlus, FaEdit, FaTrash, FaEye, FaSearch, FaFilter, FaMapMarkerAlt, FaBuilding, FaDollarSign, FaCheckCircle, FaTimes, FaFilePdf, FaImage, FaClock } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import './AdminJobs.css';
 
@@ -11,6 +11,9 @@ const AdminJobs = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterApproval, setFilterApproval] = useState('all'); // 'all', 'pending', 'approved', 'rejected'
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [formData, setFormData] = useState({
@@ -28,12 +31,17 @@ const AdminJobs = () => {
     fetchJobs();
   }, []);
 
+  useEffect(() => {
+    // Reset to first page whenever filters/search change
+    setPage(1);
+  }, [searchTerm, filterStatus, filterApproval]);
+
   const fetchJobs = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('job_opportunities')
-        .select('*')
+        .select('*, posted_by_user:users!posted_by(first_name, last_name, email)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -175,6 +183,41 @@ const AdminJobs = () => {
     }));
   };
 
+  const handleJobApproval = async (jobId, action, notes = '') => {
+    try {
+      console.log('Attempting to approve job:', { jobId, action, notes, userId: user?.id });
+      
+      const { data, error } = await supabase
+        .from('job_opportunities')
+        .update({
+          approval_status: action,
+          reviewed_at: new Date().toISOString(),
+          approval_notes: notes || null,
+          is_active: action === 'approved',
+          approved_by: user?.id
+        })
+        .eq('id', jobId)
+        .select();
+
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+      
+      console.log('Job approval successful:', data);
+      toast.success(`Job ${action} successfully!`);
+      fetchJobs();
+    } catch (error) {
+      console.error('Error updating job approval:', error);
+      toast.error(`Failed to update job approval status: ${error.message}`);
+    }
+  };
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,8 +227,16 @@ const AdminJobs = () => {
                          (filterStatus === 'active' && job.is_active) ||
                          (filterStatus === 'inactive' && !job.is_active);
     
-    return matchesSearch && matchesFilter;
+    const matchesApproval = filterApproval === 'all' ||
+                           (filterApproval === 'pending' && job.approval_status === 'pending') ||
+                           (filterApproval === 'approved' && job.approval_status === 'approved') ||
+                           (filterApproval === 'rejected' && job.approval_status === 'rejected');
+    
+    return matchesSearch && matchesFilter && matchesApproval;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / ITEMS_PER_PAGE));
+  const pagedJobs = filteredJobs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   if (loading) {
     return (
@@ -204,21 +255,12 @@ const AdminJobs = () => {
             <h1><FaBriefcase /> Job Opportunities Management</h1>
             <p>Manage job postings and opportunities for alumni</p>
           </div>
-          <button 
-            className="btn btn-primary"
-            onClick={() => {
-              setEditingJob(null);
-              resetForm();
-              setShowModal(true);
-            }}
-          >
-            <FaPlus /> Post New Job
-          </button>
         </div>
 
         <div className="jobs-controls">
           <div className="search-filter-row">
-            <div className="search-container">
+            <div className="controls-left">
+              <div className="search-container">
               <FaSearch className="search-icon" />
               <input
                 type="text"
@@ -227,19 +269,49 @@ const AdminJobs = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
-            </div>
+              </div>
             
             <div className="filter-container">
-              <FaFilter className="filter-icon" />
+              <label className="filter-label">Status
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="filter-select"
+                aria-label="Filter by job status"
               >
                 <option value="all">All Jobs</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+              </label>
+            </div>
+            <div className="filter-container">
+              <label className="filter-label">Approval
+              <select
+                value={filterApproval}
+                onChange={(e) => setFilterApproval(e.target.value)}
+                className="filter-select"
+                aria-label="Filter by approval status"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              </label>
+            </div>
+            </div>
+            <div className="controls-right">
+              <button 
+                className="btn btn-primary post-job-btn"
+                onClick={() => {
+                  setEditingJob(null);
+                  resetForm();
+                  setShowModal(true);
+                }}
+              >
+                <FaPlus /> Post New Job
+              </button>
             </div>
           </div>
 
@@ -249,29 +321,72 @@ const AdminJobs = () => {
               <span className="stat-label">Total Jobs</span>
             </div>
             <div className="stat-item">
-              <span className="stat-number">{jobs.filter(j => j.is_active).length}</span>
-              <span className="stat-label">Active</span>
+              <span className="stat-number">{jobs.filter(j => j.approval_status === 'pending').length}</span>
+              <span className="stat-label">Pending</span>
             </div>
             <div className="stat-item">
-              <span className="stat-number">{jobs.filter(j => !j.is_active).length}</span>
-              <span className="stat-label">Inactive</span>
+              <span className="stat-number">{jobs.filter(j => j.approval_status === 'approved').length}</span>
+              <span className="stat-label">Approved</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-number">{jobs.filter(j => j.is_active).length}</span>
+              <span className="stat-label">Active</span>
             </div>
           </div>
         </div>
 
         <div className="jobs-grid">
-          {filteredJobs.map(job => (
-            <div key={job.id} className={`job-card ${!job.is_active ? 'inactive' : ''}`}>
+          {pagedJobs.map(job => (
+            <div key={job.id} className={`job-card ${!job.is_active ? 'inactive' : ''} ${job.approval_status === 'pending' ? 'pending-review' : ''}`}>
               <div className="job-header">
                 <div className="job-title-section">
                   <h3 className="job-title">{job.title}</h3>
                   <div className="job-badges">
+                    {job.approval_status === 'pending' && (
+                      <span className="badge status pending">
+                        <FaClock /> Pending Review
+                      </span>
+                    )}
+                    {job.approval_status === 'approved' && (
+                      <span className="badge status approved">
+                        <FaCheckCircle /> Approved
+                      </span>
+                    )}
+                    {job.approval_status === 'rejected' && (
+                      <span className="badge status rejected">
+                        <FaTimes /> Rejected
+                      </span>
+                    )}
+                    {job.is_alumni_submission && (
+                      <span className="badge alumni-submission">Alumni Submission</span>
+                    )}
                     <span className={`badge status ${job.is_active ? 'active' : 'inactive'}`}>
                       {job.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
                 <div className="job-actions">
+                  {job.approval_status === 'pending' && (
+                    <>
+                      <button 
+                        className="btn-icon approve"
+                        onClick={() => handleJobApproval(job.id, 'approved')}
+                        title="Approve Job"
+                      >
+                        <FaCheckCircle />
+                      </button>
+                      <button 
+                        className="btn-icon reject"
+                        onClick={() => {
+                          const notes = prompt('Rejection reason (optional):');
+                          handleJobApproval(job.id, 'rejected', notes || '');
+                        }}
+                        title="Reject Job"
+                      >
+                        <FaTimes />
+                      </button>
+                    </>
+                  )}
                   <button 
                     className="btn-icon"
                     onClick={() => handleEdit(job)}
@@ -297,6 +412,21 @@ const AdminJobs = () => {
               </div>
 
               <div className="job-details">
+                {job.is_alumni_submission && (
+                  <div className="submission-info">
+                    <strong>Submitted by:</strong> {job.posted_by_user?.first_name} {job.posted_by_user?.last_name} ({job.posted_by_user?.email})
+                    {job.submission_type === 'pdf' && job.submission_file_url && (
+                      <a href={job.submission_file_url} target="_blank" rel="noopener noreferrer" className="submission-link">
+                        <FaFilePdf /> View PDF Submission
+                      </a>
+                    )}
+                    {job.submission_type === 'image' && job.submission_image_url && (
+                      <a href={job.submission_image_url} target="_blank" rel="noopener noreferrer" className="submission-link">
+                        <FaImage /> View Image Submission
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="job-meta">
                   <div className="meta-item">
                     <FaBuilding />
@@ -321,11 +451,53 @@ const AdminJobs = () => {
 
                 <div className="job-footer">
                   <span className="job-posted">Posted: {new Date(job.created_at).toLocaleDateString()}</span>
+                  {job.reviewed_at && (
+                    <span className="job-reviewed">
+                      Reviewed: {new Date(job.reviewed_at).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
           ))}
         </div>
+
+        {filteredJobs.length > ITEMS_PER_PAGE && (
+          <div className="jobs-pagination">
+            <button
+              className="jobs-page-btn"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              aria-label="Previous page"
+            >
+              Prev
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+              let start = Math.max(1, page - 2);
+              if (start + 4 > totalPages) start = Math.max(1, totalPages - 4);
+              const p = start + i;
+              if (p > totalPages) return null;
+              return (
+                <button
+                  key={p}
+                  className={`jobs-page-btn ${p === page ? 'active' : ''}`}
+                  onClick={() => setPage(p)}
+                  aria-label={`Page ${p}`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <button
+              className="jobs-page-btn"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {filteredJobs.length === 0 && (
           <div className="no-jobs">

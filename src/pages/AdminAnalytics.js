@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabaseClient';
 import { FaChartBar, FaUsers, FaGraduationCap, FaBriefcase, FaCalendarAlt, FaDownload, FaFilter, FaEye } from 'react-icons/fa';
-import { Bar, Pie, Line, Doughnut } from 'react-chartjs-2';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement } from 'chart.js';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
@@ -13,6 +13,7 @@ const AdminAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('all');
   const [chartRange, setChartRange] = useState('Year');
+  const [distributionView, setDistributionView] = useState('Employment');
   const [gradYearsFilter, setGradYearsFilter] = useState('10y');
   const [analytics, setAnalytics] = useState({
     overview: {
@@ -51,20 +52,31 @@ const AdminAnalytics = () => {
     try {
       setLoading(true);
 
-      // Fetch overview statistics
-      const [
-        { count: totalAlumni },
-        { count: tracerResponses },
-        { data: tracerData },
-        { data: userData },
-        { data: registrationData }
-      ] = await Promise.all([
+      // Fetch overview statistics - make queries resilient
+      const results = await Promise.allSettled([
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('tracer_study_responses').select('*', { count: 'exact', head: true }),
         supabase.from('tracer_study_responses').select('*'),
         supabase.from('users').select('*'),
-        supabase.from('users').select('created_at, approval_status').order('created_at', { ascending: true })
+        supabase.from('users').select('created_at, approval_status').order('created_at', { ascending: true }),
+        supabase.from('user_profiles').select('graduation_year')
       ]);
+
+      // Extract data safely from Promise.allSettled results
+      const { count: totalAlumni = 0 } = results[0].status === 'fulfilled' ? results[0].value : {};
+      const { count: tracerResponses = 0 } = results[1].status === 'fulfilled' ? results[1].value : {};
+      const { data: tracerData = [] } = results[2].status === 'fulfilled' ? results[2].value : {};
+      const { data: userData = [] } = results[3].status === 'fulfilled' ? results[3].value : {};
+      const { data: registrationData = [] } = results[4].status === 'fulfilled' ? results[4].value : {};
+      const { data: profilesData = [] } = results[5].status === 'fulfilled' ? results[5].value : {};
+
+      // Log any failed queries (non-critical)
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const queryNames = ['users count', 'tracer count', 'tracer data', 'users data', 'registration data', 'user profiles'];
+          console.warn(`Query ${queryNames[index]} failed:`, result.reason);
+        }
+      });
 
       // Process employment data
       const employmentStats = {
@@ -114,6 +126,20 @@ const AdminAnalytics = () => {
         }
       });
 
+      // Merge graduation years from user profiles to reflect total alumni distribution
+      profilesData?.forEach(p => {
+        if (p?.graduation_year) {
+          graduationYears[p.graduation_year] = (graduationYears[p.graduation_year] || 0) + 1;
+        }
+      });
+
+      // Also check userData for graduation_year as fallback
+      userData?.forEach(user => {
+        if (user?.graduation_year) {
+          graduationYears[user.graduation_year] = (graduationYears[user.graduation_year] || 0) + 1;
+        }
+      });
+
       // Process registration trends
       const registrationTrends = {};
       registrationData?.forEach(user => {
@@ -133,9 +159,9 @@ const AdminAnalytics = () => {
 
       setAnalytics({
         overview: {
-          totalAlumni: totalAlumni || 0,
+          totalAlumni: totalAlumni,
           activeUsers: userData?.filter(u => u.approval_status === 'approved').length || 0,
-          tracerResponses: tracerResponses || 0,
+          tracerResponses: tracerResponses,
           jobApplications: 0 // This would need a job_applications table
         },
         employment: employmentStats,
@@ -173,52 +199,61 @@ const AdminAnalytics = () => {
     try {
       toast.info('Preparing export data...');
 
-      // Fetch alumni data with their addresses and phone numbers
-      const { data: alumniData, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('last_name', { ascending: true });
+      // Fetch alumni data with their addresses and phone numbers - same as Admin Dashboard
+      const [{ data: users }, { data: profiles }] = await Promise.all([
+        supabase.from('users').select('*').order('last_name', { ascending: true }),
+        supabase.from('user_profiles').select('*')
+      ]);
 
-      if (error) {
-        console.error('Error fetching alumni data:', error);
-        toast.error('Failed to fetch alumni data');
-        return;
-      }
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
 
-      // Prepare data for Excel export
-      const excelData = alumniData.map((alumni, index) => ({
-        'No.': index + 1,
-        'First Name': alumni.first_name || '',
-        'Last Name': alumni.last_name || '',
-        'Email': alumni.email || '',
-        'Phone Number': alumni.phone || '',
-        'Address': alumni.address || '',
-        'Course': alumni.course || '',
-        'Graduation Year': alumni.graduation_year || '',
-        'Student ID': alumni.student_id || '',
-        'Status': alumni.approval_status || 'pending',
-        'Role': alumni.role || 'alumni',
-        'Created At': alumni.created_at ? new Date(alumni.created_at).toLocaleDateString() : ''
-      }));
+      // Prepare data for Excel export - merge user and profile data
+      const excelData = (users || []).map((u, index) => {
+        const p = profileMap.get(u.id) || {};
+        return {
+          'No.': index + 1,
+          'ID': u.id,
+          'First Name': u.first_name || '',
+          'Last Name': u.last_name || '',
+          'Email': u.email || '',
+          'Phone Number': p.phone || u.phone || '',
+          'Address': p.address || u.address || '',
+          'City': p.city || '',
+          'Country': p.country || '',
+          'Role': u.role || 'alumni',
+          'Status': u.approval_status || '',
+          'Course': p.course || u.course || '',
+          'Graduation Year': p.graduation_year || u.graduation_year || '',
+          'Batch Year': p.batch_year || '',
+          'Current Job': p.current_job || '',
+          'Company': p.company || '',
+          'Registered At': u.registration_date || u.created_at ? new Date(u.registration_date || u.created_at).toLocaleDateString() : ''
+        };
+      });
 
       // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.json_to_sheet(excelData);
 
-      // Set column widths
+      // Set column widths - same as Admin Dashboard
       worksheet['!cols'] = [
         { wch: 5 },  // No.
+        { wch: 35 }, // ID
         { wch: 15 }, // First Name
         { wch: 15 }, // Last Name
         { wch: 30 }, // Email
         { wch: 15 }, // Phone Number
         { wch: 40 }, // Address
-        { wch: 20 }, // Course
-        { wch: 15 }, // Graduation Year
-        { wch: 15 }, // Student ID
-        { wch: 12 }, // Status
+        { wch: 15 }, // City
+        { wch: 15 }, // Country
         { wch: 10 }, // Role
-        { wch: 15 }  // Created At
+        { wch: 12 }, // Status
+        { wch: 25 }, // Course
+        { wch: 15 }, // Graduation Year
+        { wch: 15 }, // Batch Year
+        { wch: 25 }, // Current Job
+        { wch: 25 }, // Company
+        { wch: 15 }  // Registered At
       ];
 
       // Add worksheet to workbook
@@ -236,6 +271,7 @@ const AdminAnalytics = () => {
   };
 
   // Chart configurations
+  // Match AdminDashboard pie/doughnut styling
   const employmentChartData = {
     labels: ['Employed', 'Self-Employed', 'Unemployed', 'Graduate School'],
     datasets: [{
@@ -246,30 +282,23 @@ const AdminAnalytics = () => {
         analytics.employment.graduateSchool
       ],
       backgroundColor: [
-        '#10b981', // Green for Employed
-        '#f59e0b', // Orange for Self-Employed
-        '#ef4444', // Red for Unemployed
-        '#3b82f6'  // Blue for Graduate School
+        '#10B981', // Soft teal-green for Employed
+        '#6EE7B7', // Light mint for Self-Employed
+        '#FCA5A5', // Soft coral for Unemployed
+        '#3B82F6'  // Muted blue for Graduate School
       ],
       borderColor: [
-        '#059669', // Darker Green
-        '#d97706', // Darker Orange
-        '#dc2626', // Darker Red
-        '#2563eb'  // Darker Blue
+        'rgba(16, 185, 129, 0.1)',
+        'rgba(110, 231, 183, 0.1)',
+        'rgba(252, 165, 165, 0.1)',
+        'rgba(59, 130, 246, 0.1)'
       ],
-      borderWidth: 2
+      borderWidth: 0
     }]
   };
 
   // --- Gender color mapping (male = blue, female = pink) ---
-  const genderColorMap = {
-    male: '#1E90FF',
-    m: '#1E90FF',
-    man: '#1E90FF',
-    female: '#FF69B4',
-    f: '#FF69B4',
-    woman: '#FF69B4'
-  };
+  const genderColorMap = { male: '#4A90E2', m: '#4A90E2', female: '#A78BFA', f: '#A78BFA' };
   const getGenderColorForLabel = (label) => {
     const key = (label || '').toString().toLowerCase().trim();
     return genderColorMap[key] || '#CBD5E1'; // fallback grey
@@ -283,8 +312,8 @@ const AdminAnalytics = () => {
     datasets: [{
       data: genderValues,
       backgroundColor: genderLabels.map(getGenderColorForLabel),
-      borderColor: genderLabels.map(getGenderColorForLabel),
-      borderWidth: 2
+      borderColor: genderLabels.map(() => 'rgba(255, 255, 255, 0.3)'),
+      borderWidth: 0
     }]
   };
 
@@ -293,39 +322,14 @@ const AdminAnalytics = () => {
   const graduationYearChartData = {
     labels: cutoffYears,
     datasets: [{
-      label: 'Number of Alumni',
+      label: 'Alumni (by Grad Year)',
       data: cutoffYears.map(year => analytics.demographics.graduationYears[year] || 0),
       backgroundColor: cutoffYears.map((_, index) => {
-        const colors = [
-          '#e91e63', // UIC Pink
-          '#3b82f6', // Blue
-          '#10b981', // Green
-          '#f59e0b', // Orange
-          '#8b5cf6', // Purple
-          '#ef4444', // Red
-          '#06b6d4', // Cyan
-          '#84cc16', // Lime
-          '#f97316', // Orange Red
-          '#ec4899'  // Pink
-        ];
+        const colors = ['#60A5FA', '#3B82F6', '#2563EB', '#1D4ED8'];
         return colors[index % colors.length];
       }),
-      borderColor: cutoffYears.map((_, index) => {
-        const colors = [
-          '#c2185b', // Darker Pink
-          '#2563eb', // Darker Blue
-          '#059669', // Darker Green
-          '#d97706', // Darker Orange
-          '#7c3aed', // Darker Purple
-          '#dc2626', // Darker Red
-          '#0891b2', // Darker Cyan
-          '#65a30d', // Darker Lime
-          '#ea580c', // Darker Orange Red
-          '#db2777'  // Darker Pink
-        ];
-        return colors[index % colors.length];
-      }),
-      borderWidth: 2
+      borderColor: 'rgba(59, 130, 246, 0.1)',
+      borderWidth: 0
     }]
   };
 
@@ -351,11 +355,33 @@ const AdminAnalytics = () => {
       legend: {
         position: 'bottom',
         labels: {
-          padding: 20,
-          usePointStyle: true
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 12,
+          font: { size: 11, family: 'Inter, sans-serif', weight: 500 },
+          color: '#6B7280'
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#374151',
+        bodyColor: '#6B7280',
+        borderColor: '#E5E7EB',
+        borderWidth: 1,
+        padding: 10,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return `${label}: ${value} (${percentage}%)`;
+          }
         }
       }
-    }
+    },
+    animation: { animateRotate: true, animateScale: true, duration: 600, easing: 'easeInOutQuart' }
   };
 
   if (loading) {
@@ -451,74 +477,99 @@ const AdminAnalytics = () => {
           </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="charts-section">
-          <div className="chart-row">
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Employment Status</h3>
-                <div className="chart-range">
-                  {['Year', 'Month'].map(r => (
-                    <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <p className="chart-sub">Distribution of alumni employment status</p>
-              <div className="chart-wrapper" style={{ height: 300 }}>
-                <Doughnut data={employmentChartData} options={chartOptions} />
-              </div>
+        {/* Side-by-side charts */}
+        <div className="chart-row">
+        {/* Alumni Distribution - Merged Chart with Toggle */}
+        <div className="powerbi-card">
+          <div className="powerbi-card-header">
+            <div className="chart-header-left">
+              <h3>Alumni Distribution</h3>
+              <p className="card-subtitle">View alumni data by category</p>
             </div>
-
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Gender Distribution</h3>
-                <div className="chart-range">
-                  {['Year', 'Month'].map(r => (
-                    <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <p className="chart-sub">Alumni demographics by gender</p>
-              <div className="chart-wrapper" style={{ height: 300 }}>
-                <Pie data={genderChartData} options={chartOptions} />
-              </div>
+            <div className="distribution-toggle">
+              {['Employment', 'Gender'].map(view => (
+                <button 
+                  key={view} 
+                  className={`toggle-btn ${distributionView === view ? 'active' : ''}`} 
+                  onClick={() => setDistributionView(view)}
+                >
+                  {view}
+                </button>
+              ))}
             </div>
           </div>
-
-          <div className="chart-row">
-            <div className="chart-container full-width">
-              <div className="chart-header">
-                <h3>Alumni by Graduation Year</h3>
-                <div className="chart-range">
-                  {['5y', '10y', '20y', 'All'].map(r => (
-                    <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <p className="chart-sub">Distribution of alumni across graduation years</p>
-              <div className="chart-wrapper" style={{ height: 320 }}>
-                <Bar data={graduationYearChartData} options={chartOptions} />
-              </div>
+          <div className="powerbi-card-body">
+            <div className="chart-wrapper" style={{ height: 280 }}>
+              <Doughnut 
+                data={distributionView === 'Employment' ? employmentChartData : genderChartData} 
+                options={{
+                  ...chartOptions,
+                  plugins: {
+                    ...chartOptions.plugins,
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 12,
+                        font: {
+                          size: 11,
+                          family: 'Inter, sans-serif',
+                          weight: 500
+                        },
+                        color: '#6B7280'
+                      }
+                    },
+                    tooltip: {
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      titleColor: '#374151',
+                      bodyColor: '#6B7280',
+                      borderColor: '#E5E7EB',
+                      borderWidth: 1,
+                      padding: 10,
+                      displayColors: true,
+                      callbacks: {
+                        label: function(context) {
+                          const label = context.label || '';
+                          const value = context.parsed || 0;
+                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                          return `${label}: ${value} (${percentage}%)`;
+                        }
+                      }
+                    }
+                  },
+                  animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                    duration: 600,
+                    easing: 'easeInOutQuart'
+                  }
+                }} 
+              />
             </div>
           </div>
         </div>
 
-        {/* Registration Trends - Separate Section */}
-        {analytics.trends.registrationTrends.length > 0 && (
-          <div className="charts-section">
-            <div className="chart-row">
-              <div className="chart-container full-width">
-                <div className="chart-header">
-                  <h3>Registration Trends</h3>
-                  <p>New alumni registrations over time</p>
-                </div>
-                <div className="chart-wrapper" style={{ height: 320 }}>
-                  <Line data={registrationTrendData} options={chartOptions} />
-                </div>
-              </div>
+        {/* Graduation Year Bar Chart */}
+        <div className="powerbi-card">
+          <div className="powerbi-card-header">
+            <h3><FaGraduationCap /> Alumni by Graduation Year</h3>
+            <div className="chart-range">
+              {['5y', '10y', '20y', 'All'].map(r => (
+                <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
+              ))}
             </div>
           </div>
-        )}
+          <div className="powerbi-card-body">
+            <div className="chart-wrapper" style={{ height: 280 }}>
+              <Bar data={graduationYearChartData} options={chartOptions} />
+            </div>
+          </div>
+        </div>
+        </div>
+
+        {/* Registration Trends removed per request */}
 
         {/* Detailed Statistics */}
         <div className="detailed-stats">

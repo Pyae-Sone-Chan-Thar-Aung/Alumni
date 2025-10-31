@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabaseClient';
-import { FaUsers, FaUserCheck, FaNewspaper, FaBriefcase, FaChartBar, FaClipboardList, FaUserTimes, FaClock, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaEye, FaImage, FaPlus, FaEdit, FaTimes, FaUserPlus, FaGraduationCap, FaBuilding, FaDownload, FaLink, FaEnvelope, FaUser } from 'react-icons/fa';
+import { FaUsers, FaUserCheck, FaNewspaper, FaBriefcase, FaChartBar, FaClipboardList, FaUserTimes, FaClock, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaEye, FaImage, FaPlus, FaEdit, FaTimes, FaUserPlus, FaGraduationCap, FaBuilding, FaDownload, FaLink, FaEnvelope, FaUser, FaMapMarkerAlt } from 'react-icons/fa';
 import './AdminDashboard.css';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 import { Bar, Doughnut, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import PDFReport from '../components/PDFReport';
+import AdminMap from '../components/AdminMap';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const AdminDashboard = () => {
@@ -25,6 +26,10 @@ const AdminDashboard = () => {
   });
   const [pendingUsers, setPendingUsers] = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
   // Invite Alumni modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [emailsInput, setEmailsInput] = useState('');
@@ -44,6 +49,7 @@ const AdminDashboard = () => {
   // Chart range tabs: Year / Month
   const [chartRange, setChartRange] = useState('Year');
   const [gradYearsFilter, setGradYearsFilter] = useState('10y'); // '10y' | '20y' | 'All'
+  const [distributionView, setDistributionView] = useState('Employment'); // 'Employment' | 'Gender'
 
   // Date range helpers
   const getRangeBounds = (range) => {
@@ -562,6 +568,7 @@ const AdminDashboard = () => {
       // Refresh data
       await fetchStats();
       setShowPendingModal(false);
+      setCurrentPage(1); // Reset to first page after action
 
     } catch (error) {
       console.error('Error handling approval:', error);
@@ -598,26 +605,26 @@ const AdminDashboard = () => {
         Math.round((analytics.employment.graduateSchool || 0) * mult)
       ],
       backgroundColor: [
-        '#10b981', // Green for Employed
-        '#f59e0b', // Orange for Self-Employed
-        '#ef4444', // Red for Unemployed
-        '#3b82f6'  // Blue for Graduate School
+        '#10B981', // Soft teal-green for Employed
+        '#6EE7B7', // Light mint for Self-Employed
+        '#FCA5A5', // Soft coral for Unemployed
+        '#3B82F6'  // Muted blue for Graduate School
       ],
       borderColor: [
-        '#059669', // Darker Green
-        '#d97706', // Darker Orange
-        '#dc2626', // Darker Red
-        '#2563eb'  // Darker Blue
+        'rgba(16, 185, 129, 0.1)', // Minimal border
+        'rgba(110, 231, 183, 0.1)',
+        'rgba(252, 165, 165, 0.1)',
+        'rgba(59, 130, 246, 0.1)'
       ],
-      borderWidth: 2
+      borderWidth: 0
     }]
   };
 
   const genderColorMap = {
-    male: '#1E90FF',   // blue
-    m: '#1E90FF',
-    female: '#FF69B4', // pink
-    f: '#FF69B4'
+    male: '#4A90E2',   // Soft muted blue
+    m: '#4A90E2',
+    female: '#A78BFA', // Muted purple
+    f: '#A78BFA'
   };
 
   const getGenderColors = (labels = []) => {
@@ -631,8 +638,8 @@ const AdminDashboard = () => {
     datasets: [{
       data: genderValues,
       backgroundColor: getGenderColors(genderLabels),
-      borderColor: getGenderColors(genderLabels).map(c => c),
-      borderWidth: 2
+      borderColor: getGenderColors(genderLabels).map(() => 'rgba(255, 255, 255, 0.3)'),
+      borderWidth: 0
     }]
   };
 
@@ -645,313 +652,449 @@ const AdminDashboard = () => {
       label: 'Alumni (by Grad Year)',
       data: cutoffYears.map(y => analytics.graduationYears[y] || 0),
       backgroundColor: cutoffYears.map((_, index) => {
+        // Gradient shades of calm blue
         const colors = [
-          '#e91e63', // UIC Pink
-          '#3b82f6', // Blue
-          '#10b981', // Green
-          '#f59e0b', // Orange
-          '#8b5cf6', // Purple
-          '#ef4444', // Red
-          '#06b6d4', // Cyan
-          '#84cc16', // Lime
-          '#f97316', // Orange Red
-          '#ec4899'  // Pink
+          '#60A5FA', // Light blue
+          '#3B82F6', // Muted blue
+          '#2563EB', // Medium blue
+          '#1D4ED8'  // Deep blue
         ];
         return colors[index % colors.length];
       }),
-      borderColor: cutoffYears.map((_, index) => {
-        const colors = [
-          '#c2185b', // Darker Pink
-          '#2563eb', // Darker Blue
-          '#059669', // Darker Green
-          '#d97706', // Darker Orange
-          '#7c3aed', // Darker Purple
-          '#dc2626', // Darker Red
-          '#0891b2', // Darker Cyan
-          '#65a30d', // Darker Lime
-          '#ea580c', // Darker Orange Red
-          '#db2777'  // Darker Pink
-        ];
-        return colors[index % colors.length];
-      }),
-      borderWidth: 2
+      borderColor: 'rgba(59, 130, 246, 0.1)',
+      borderWidth: 0
     }]
   };
 
   const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } } };
 
   return (
-    <div className="admin-layout">
+    <div className="admin-layout powerbi-layout">
       <main className="admin-content">
-        <div className="page-header">
+        <div className="page-header powerbi-header">
           <div className="breadcrumbs">
             <span className="current">Admin Dashboard</span>
           </div>
-          <div className="kpis">
-            <div className="actions">
-              <button className="btn btn-secondary" onClick={() => setShowPendingModal(true)}>Pending ({stats.pendingApprovals})</button>
-            </div>
-
-          </div>
         </div>
 
+        <div className="admin-dashboard powerbi-dashboard">
 
-        <div className="admin-dashboard">
-
-          {/* Statistics Cards */}
-          <div className="stats-grid">
-            <div className="stat-card users">
-              <div className="stat-icon">
-                <FaUsers />
+          {/* Power BI Grid Layout */}
+          <div className="powerbi-grid">
+            
+            {/* Admin Tools - Moved to Top */}
+            <div className="powerbi-card tools-card">
+              <div className="powerbi-card-header">
+                <h3><FaChartBar /> Admin Tools</h3>
+                <p className="card-subtitle">Quick access to management features</p>
               </div>
-              <div className="stat-content">
-                <div className="stat-top">
-                  <h3>{stats.totalUsers}</h3>
-                  <span className={`trend-chip ${trends.users > 0 ? 'positive' : trends.users < 0 ? 'negative' : 'neutral'}`}>
-                    {trends.users > 0 ? `+${trends.users}%` : trends.users < 0 ? `${trends.users}%` : '0%'}
-                  </span>
+              <div className="powerbi-card-body">
+                <div className="tools-grid">
+                  {/* User Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/users')}>
+                    <div className="tool-icon"><FaUsers /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Manage Users</div>
+                      <div className="tool-sub">View & approve alumni</div>
+                    </div>
+                  </button>
+
+                  {/* Content Management - Dropdown */}
+                  <div className="tool-card content-manager" onClick={(e) => {
+                    const dropdown = e.currentTarget.querySelector('.content-dropdown');
+                    dropdown?.classList.toggle('show');
+                  }}>
+                    <div className="tool-icon"><FaNewspaper /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Content Management</div>
+                      <div className="tool-sub">News, Gallery, Jobs</div>
+                    </div>
+                    <div className="content-dropdown">
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/news'); }}>
+                        <FaNewspaper /> News
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/gallery'); }}>
+                        <FaImage /> Gallery
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/jobs'); }}>
+                        <FaBriefcase /> Jobs
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Analytics & Reports */}
+                  <button className="tool-card" onClick={() => navigate('/admin/analytics')}>
+                    <div className="tool-icon"><FaChartBar /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Analytics</div>
+                      <div className="tool-sub">Key metrics</div>
+                    </div>
+                  </button>
+
+                  <button className="tool-card" onClick={() => navigate('/admin/tracer-study')}>
+                    <div className="tool-icon"><FaClipboardList /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Tracer Study</div>
+                      <div className="tool-sub">Alumni outcomes</div>
+                    </div>
+                  </button>
+
+                  <button className="tool-card" onClick={exportUsersCSV}>
+                    <div className="tool-icon"><FaDownload /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Generate Reports</div>
+                      <div className="tool-sub">Export data</div>
+                    </div>
+                  </button>
+
+                  {/* Support & Tools */}
+                  <button className="tool-card" onClick={() => window.location.href = 'mailto:alumni@uic.edu.ph?subject=UIC Alumni Update'}>
+                    <div className="tool-icon"><FaEnvelope /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Email Office</div>
+                      <div className="tool-sub">alumni@uic.edu.ph</div>
+                    </div>
+                  </button>
                 </div>
-                <p>Total Alumni</p>
               </div>
             </div>
 
-            <div className="stat-card pending">
-              <div className="stat-icon">
-                <FaClock />
-              </div>
-              <div className="stat-content">
-                <div className="stat-top">
-                  <h3>{stats.pendingApprovals}</h3>
-                  <span className={`trend-chip ${trends.pending > 0 ? 'positive' : trends.pending < 0 ? 'negative' : 'neutral'}`}>
-                    {trends.pending > 0 ? `+${trends.pending}%` : trends.pending < 0 ? `${trends.pending}%` : '0%'}
-                  </span>
+            {/* Alumni Map - Full Width */}
+            <div className="powerbi-card map-card">
+              <div className="powerbi-card-header">
+                <div className="chart-header-left">
+                  <h3><FaMapMarkerAlt /> Alumni Locations</h3>
+                  <p className="card-subtitle">Global distribution and filters</p>
                 </div>
-                <p>Pending</p>
-              </div>
-              <button
-                className="stat-action"
-                onClick={() => setShowPendingModal(true)}
-                disabled={stats.pendingApprovals === 0}
-              >
-                <FaEye /> Review
-              </button>
-            </div>
-
-            <div className="stat-card news">
-              <div className="stat-icon">
-                <FaNewspaper />
-              </div>
-              <div className="stat-content">
-                <div className="stat-top">
-                  <h3>{stats.totalNews}</h3>
-                  <span className={`trend-chip ${trends.news > 0 ? 'positive' : trends.news < 0 ? 'negative' : 'neutral'}`}>
-                    {trends.news > 0 ? `+${trends.news}%` : trends.news < 0 ? `${trends.news}%` : '0%'}
-                  </span>
-                </div>
-                <p>News Articles</p>
-              </div>
-            </div>
-
-            <div className="stat-card jobs">
-              <div className="stat-icon">
-                <FaBriefcase />
-              </div>
-              <div className="stat-content">
-                <div className="stat-top">
-                  <h3>{stats.totalJobs}</h3>
-                  <span className={`trend-chip ${trends.jobs > 0 ? 'positive' : trends.jobs < 0 ? 'negative' : 'neutral'}`}>
-                    {trends.jobs > 0 ? `+${trends.jobs}%` : trends.jobs < 0 ? `${trends.jobs}%` : '0%'}
-                  </span>
-                </div>
-                <p>Job Opportunities</p>
-              </div>
-            </div>
-
-            <div className="stat-card tracer">
-              <div className="stat-icon">
-                <FaChartBar />
-              </div>
-              <div className="stat-content">
-                <div className="stat-top">
-                  <h3>{stats.tracerStudyResponses}</h3>
-                  <span className={`trend-chip ${trends.tracer > 0 ? 'positive' : trends.tracer < 0 ? 'negative' : 'neutral'}`}>
-                    {trends.tracer > 0 ? `+${trends.tracer}%` : trends.tracer < 0 ? `${trends.tracer}%` : '0%'}
-                  </span>
-                </div>
-                <p>Tracer Responses</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="charts-section">
-            <div className="chart-row">
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Employment Status</h3>
-                  <div className="chart-range">
-                    {['Year', 'Month'].map(r => (
-                      <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
-                    ))}
+                <div className="header-stat-item map-stat">
+                  <FaUsers className="header-stat-icon" />
+                  <div className="header-stat-content">
+                    <span className="header-stat-value">{stats.totalUsers || 0}</span>
+                    <span className="header-stat-label">Total Alumni</span>
                   </div>
                 </div>
-                <p className="chart-sub">Distribution of alumni employment status</p>
-                <div className="chart-wrapper" style={{ height: 300 }}>
-                  <Doughnut data={employmentChartData} options={chartOptions} />
-                </div>
               </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Gender Distribution</h3>
-                  <div className="chart-range">
-                    {['Year', 'Month'].map(r => (
-                      <button key={r} className={`tab ${chartRange === r ? 'active' : ''}`} onClick={() => setChartRange(r)}>{r}</button>
-                    ))}
-                  </div>
-                </div>
-                <p className="chart-sub">Alumni demographics by gender</p>
-                <div className="chart-wrapper" style={{ height: 300 }}>
-                  <Pie data={genderChartData} options={chartOptions} />
-                </div>
+              <div className="powerbi-card-body">
+                <AdminMap />
               </div>
             </div>
 
-            <div className="chart-row">
-              <div className="chart-container full-width">
-                <div className="chart-header">
-                  <h3>Alumni by Graduation Year</h3>
-                  <div className="chart-range">
-                    {['5y', '10y', '20y', 'All'].map(r => (
-                      <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
-                    ))}
-                  </div>
+            {/* Alumni Distribution - Merged Chart with Toggle */}
+            <div className="powerbi-card">
+              <div className="powerbi-card-header">
+                <div className="chart-header-left">
+                  <h3>Alumni Distribution</h3>
+                  <p className="card-subtitle">View alumni data by category</p>
                 </div>
-                <p className="chart-sub">Distribution of alumni across graduation years</p>
-                <div className="chart-wrapper" style={{ height: 320 }}>
-                  <Bar data={graduationYearChartData} options={chartOptions} />
+                <div className="distribution-toggle">
+                  {['Employment', 'Gender'].map(view => (
+                    <button 
+                      key={view} 
+                      className={`toggle-btn ${distributionView === view ? 'active' : ''}`} 
+                      onClick={() => setDistributionView(view)}
+                    >
+                      {view}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="quick-actions">
-            <h2>Quick Actions</h2>
-            <div className="actions-grid">
-              <button className="action-card users" onClick={() => navigate('/admin/users')}>
-                <div className="action-icon users"><FaUsers /></div>
-                <div className="action-text">
-                  <div className="action-title">Manage Users</div>
-                  <div className="action-sub">Create, approve, update alumni</div>
-                </div>
-              </button>
-
-              <button className="action-card news" onClick={() => navigate('/admin/news')}>
-                <div className="action-icon news"><FaNewspaper /></div>
-                <div className="action-text">
-                  <div className="action-title">Manage News</div>
-                  <div className="action-sub">Publish announcements</div>
-                </div>
-              </button>
-
-              <button className="action-card gallery" onClick={() => navigate('/admin/gallery')}>
-                <div className="action-icon gallery"><FaImage /></div>
-                <div className="action-text">
-                  <div className="action-title">Manage Gallery</div>
-                  <div className="action-sub">Upload event photos</div>
-                </div>
-              </button>
-
-              <button className="action-card jobs" onClick={() => navigate('/admin/jobs')}>
-                <div className="action-icon jobs"><FaBriefcase /></div>
-                <div className="action-text">
-                  <div className="action-title">Manage Jobs</div>
-                  <div className="action-sub">Post & review openings</div>
-                </div>
-              </button>
-
-              <button className="action-card tracer" onClick={() => navigate('/admin/tracer-study')}>
-                <div className="action-icon tracer"><FaChartBar /></div>
-                <div className="action-text">
-                  <div className="action-title">Tracer-Study Analytics</div>
-                  <div className="action-sub">Analyze alumni outcomes</div>
-                </div>
-              </button>
-
-              <button className="action-card analytics" onClick={() => navigate('/admin/analytics')}>
-                <div className="action-icon analytics"><FaChartBar /></div>
-                <div className="action-text">
-                  <div className="action-title">Analytics</div>
-                  <div className="action-sub">Explore key metrics</div>
-                </div>
-              </button>
-
-              <button className="action-card export" onClick={exportUsersCSV}>
-                <div className="action-icon export"><FaDownload /></div>
-                <div className="action-text">
-                  <div className="action-title">Export Users</div>
-                  <div className="action-sub">Download Excel report</div>
-                </div>
-              </button>
-
-              <button className="action-card invite" onClick={() => setShowInviteModal(true)}>
-                <div className="action-icon invite"><FaUserPlus /></div>
-                <div className="action-text">
-                  <div className="action-title">Invite Alumni</div>
-                  <div className="action-sub">Bulk import & invites</div>
-                </div>
-              </button>
-
-              <button className="action-card link" onClick={copyRegistrationLink}>
-                <div className="action-icon link"><FaLink /></div>
-                <div className="action-text">
-                  <div className="action-title">Copy Registration Link</div>
-                  <div className="action-sub">Share with candidates</div>
-                </div>
-              </button>
-
-              <button className="action-card email" onClick={() => window.location.href = 'mailto:alumni@uic.edu.ph?subject=UIC Alumni Update'}>
-                <div className="action-icon email"><FaEnvelope /></div>
-                <div className="action-text">
-                  <div className="action-title">Email Alumni Office</div>
-                  <div className="action-sub">alumni@uic.edu.ph</div>
-                </div>
-              </button>
-
-              <button className="action-card pending" onClick={() => setShowPendingModal(true)} disabled={stats.pendingApprovals === 0}>
-                <div className="action-icon pending"><FaUserCheck /></div>
-                <div className="action-text">
-                  <div className="action-title">Pending Approvals</div>
-                  <div className="action-sub">{stats.pendingApprovals} awaiting review</div>
-                </div>
-              </button>
-
-              <div className="action-card utility" style={{ alignItems: 'stretch' }}>
-                <div className="action-icon export"><FaDownload /></div>
-                <div className="action-text">
-                  <div className="action-title">Reports (PDF)</div>
-                  <div className="action-sub">Download or print</div>
-                </div>
-                <div className="action-controls">
-                  <PDFReport
-                    data={{
-                      totalUsers: stats.totalUsers,
-                      totalJobs: stats.totalJobs,
-                      totalNews: stats.totalNews,
-                      pendingApprovals: stats.pendingApprovals,
-                      tracerStudyResponses: stats.tracerStudyResponses,
-                      employment: analytics.employment,
-                      gender: analytics.gender,
-                      graduationYears: analytics.graduationYears
-                    }}
-                    reportType="General Portal Statistics"
+              <div className="powerbi-card-body">
+                <div className="chart-wrapper" style={{ height: 280 }}>
+                  <Doughnut 
+                    data={distributionView === 'Employment' ? employmentChartData : genderChartData} 
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          position: 'bottom',
+                          labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 12,
+                            font: {
+                              size: 11,
+                              family: 'Inter, sans-serif',
+                              weight: 500
+                            },
+                            color: '#6B7280'
+                          }
+                        },
+                        tooltip: {
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          titleColor: '#374151',
+                          bodyColor: '#6B7280',
+                          borderColor: '#E5E7EB',
+                          borderWidth: 1,
+                          padding: 10,
+                          displayColors: true,
+                          callbacks: {
+                            label: function(context) {
+                              const label = context.label || '';
+                              const value = context.parsed || 0;
+                              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return `${label}: ${value} (${percentage}%)`;
+                            }
+                          }
+                        }
+                      },
+                      animation: {
+                        animateRotate: true,
+                        animateScale: true,
+                        duration: 600,
+                        easing: 'easeInOutQuart'
+                      }
+                    }} 
                   />
                 </div>
               </div>
             </div>
-          </div>
 
+            {/* Graduation Year Bar Chart */}
+            <div className="powerbi-card">
+              <div className="powerbi-card-header">
+                <h3><FaGraduationCap /> Alumni by Graduation Year</h3>
+                <div className="chart-range">
+                  {['5y', '10y', '20y', 'All'].map(r => (
+                    <button key={r} className={`tab ${gradYearsFilter === r ? 'active' : ''}`} onClick={() => setGradYearsFilter(r)}>{r}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="powerbi-card-body">
+                <div className="chart-wrapper" style={{ height: 280 }}>
+                  <Bar data={graduationYearChartData} options={chartOptions} />
+                </div>
+              </div>
+            </div>
+
+
+            {/* Pending Approvals Table */}
+            <div className="powerbi-card table-card">
+              <div className="powerbi-card-header">
+                <h3><FaClock /> Pending Account Approvals</h3>
+                <span className="pending-badge">{pendingUsers.length}</span>
+              </div>
+              <div className="powerbi-card-body no-padding">
+                {pendingUsers.length > 0 ? (
+                  <>
+                    <div className="powerbi-table-container">
+                      <table className="powerbi-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Course</th>
+                            <th>Year</th>
+                            <th>Employment</th>
+                            <th style={{ textAlign: 'center' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingUsers
+                            .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                            .map((user) => (
+                          <tr key={user.id}>
+                            <td>
+                              <div className="user-info-cell">
+                                {user.profile_image_url ? (
+                                  <img src={user.profile_image_url} alt="Profile" className="table-avatar" />
+                                ) : (
+                                  <div className="table-avatar-placeholder">
+                                    {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
+                                  </div>
+                                )}
+                                <span className="user-name">{user.first_name} {user.last_name}</span>
+                              </div>
+                            </td>
+                            <td className="email-cell">{user.email}</td>
+                            <td>{user.program || '—'}</td>
+                            <td>{user.graduation_year || '—'}</td>
+                            <td className="employment-cell">
+                              {user.current_job ? (
+                                <div className="employment-info">
+                                  <span className="job-title">{user.current_job}</span>
+                                  <span className="company-name">{user.company}</span>
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td>
+                              <div className="table-actions-icons">
+                                <button
+                                  className="action-icon-btn view"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setShowUserDetailsModal(true);
+                                  }}
+                                  title="View Details"
+                                >
+                                  <FaEye />
+                                </button>
+                                <button
+                                  className="action-icon-btn approve"
+                                  onClick={() => handleApproval(user.id, 'approve')}
+                                  disabled={loading}
+                                  title="Approve"
+                                >
+                                  <FaCheckCircle />
+                                </button>
+                                <button
+                                  className="action-icon-btn reject"
+                                  onClick={() => handleApproval(user.id, 'reject')}
+                                  disabled={loading}
+                                  title="Reject"
+                                >
+                                  <FaTimes />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        </tbody>
+                      </table>
+                    </div>
+                {pendingUsers.length > itemsPerPage && (
+                  <div className="pagination">
+                    <button
+                      className="pagination-btn"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </button>
+                    <span className="pagination-info">
+                      Page {currentPage} of {Math.ceil(pendingUsers.length / itemsPerPage)}
+                    </span>
+                    <button
+                      className="pagination-btn"
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(pendingUsers.length / itemsPerPage), prev + 1))}
+                      disabled={currentPage >= Math.ceil(pendingUsers.length / itemsPerPage)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="no-pending-message">
+                <FaUserCheck />
+                <p>No pending approvals at this time.</p>
+              </div>
+            )}
+              </div>
+            </div>
+
+          </div>
+          {/* End Power BI Grid */}
+
+          {/* User Details Modal */}
+          {showUserDetailsModal && selectedUser && (
+            <div className="modal-overlay" onClick={() => setShowUserDetailsModal(false)}>
+              <div className="user-details-modal" onClick={(e) => e.stopPropagation()}>
+                <button className="modal-close-btn" onClick={() => setShowUserDetailsModal(false)}>
+                  <FaTimes />
+                </button>
+                <div className="user-details-header">
+                  <div className="user-details-avatar">
+                    {selectedUser.profile_image_url ? (
+                      <img src={selectedUser.profile_image_url} alt="Profile" />
+                    ) : (
+                      <div className="avatar-placeholder-large">
+                        {(selectedUser.first_name?.[0] || '') + (selectedUser.last_name?.[0] || '')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="user-details-name">
+                    <h2>{selectedUser.first_name} {selectedUser.last_name}</h2>
+                    <p className="user-email">{selectedUser.email}</p>
+                  </div>
+                </div>
+                <div className="user-details-body">
+                  <div className="details-section">
+                    <h3><FaGraduationCap /> Academic Information</h3>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Course:</span>
+                        <span className="detail-value">{selectedUser.program || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Graduation Year:</span>
+                        <span className="detail-value">{selectedUser.graduation_year || 'Not specified'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3><FaBriefcase /> Professional Information</h3>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Current Job:</span>
+                        <span className="detail-value">{selectedUser.current_job || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Company:</span>
+                        <span className="detail-value">{selectedUser.company || 'Not specified'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3><FaEnvelope /> Contact Information</h3>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Phone:</span>
+                        <span className="detail-value">{selectedUser.phone || 'Not provided'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Address:</span>
+                        <span className="detail-value">{selectedUser.address || 'Not provided'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">City:</span>
+                        <span className="detail-value">{selectedUser.city || 'Not provided'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Country:</span>
+                        <span className="detail-value">{selectedUser.country || 'Not provided'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3><FaClock /> Submission Details</h3>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Submitted:</span>
+                        <span className="detail-value">{new Date(selectedUser.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="user-details-footer">
+                  <button
+                    className="btn-approve-large"
+                    onClick={() => {
+                      handleApproval(selectedUser.id, 'approve');
+                      setShowUserDetailsModal(false);
+                    }}
+                    disabled={loading}
+                  >
+                    <FaCheckCircle /> Approve Account
+                  </button>
+                  <button
+                    className="btn-reject-large"
+                    onClick={() => {
+                      handleApproval(selectedUser.id, 'reject');
+                      setShowUserDetailsModal(false);
+                    }}
+                    disabled={loading}
+                  >
+                    <FaTimes /> Reject Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Invite Alumni Modal */}
           {showInviteModal && (

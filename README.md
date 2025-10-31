@@ -82,8 +82,8 @@ This project uses Supabase as the free online database. Follow these steps to se
 ### 3. Set Environment Variables
 Create a `.env` file in the root directory:
 ```env
-REACT_APP_SUPABASE_URL=your-project-url
-REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+REACT_APP_SUPABASE_URL= ******
+REACT_APP_SUPABASE_ANON_KEY= ******
 ```
 
 ### 4. Set Up Database Tables
@@ -108,18 +108,6 @@ CREATE TABLE users (
 -- Add more tables as needed...
 ```
 
-## 🎯 Demo Accounts
-
-For testing purposes, use these demo accounts:
-
-### Admin Account
-- **Email**: admin@uic.edu.ph
-- **Password**: password123
-
-### Alumni Account
-- **Email**: alumni@uic.edu.ph
-- **Password**: password123
-
 ## 🎨 Theme Colors
 
 The application uses UIC's official colors:
@@ -136,24 +124,6 @@ The portal is fully responsive and works on:
 - Tablets
 - Mobile phones
 
-## 🔧 Available Scripts
-
-- `npm start` - Runs the app in development mode
-- `npm test` - Launches the test runner
-- `npm run build` - Builds the app for production
-- `npm run eject` - Ejects from Create React App
-
-## 🏗️ Project Structure
-
-```
-src/
-├── components/          # Reusable UI components
-├── context/            # React context providers
-├── pages/              # Page components
-├── config/             # Configuration files
-├── App.js              # Main app component
-└── index.js            # App entry point
-```
 
 ## 🔒 Security Features
 
@@ -164,25 +134,6 @@ src/
 - Input validation
 
 ## 🚀 Production Deployment
-
-### Pre-Deployment Setup
-
-1. **Database Setup**: Execute `final_database_setup.sql` in your Supabase SQL Editor
-2. **Environment Variables**: Configure production environment variables
-3. **Health Check**: Run system health check to verify readiness
-
-### Quick Deployment Commands
-
-```bash
-# Run system health check
-node system-health-check.js
-
-# Build for production (Windows)
-build-production.bat
-
-# Build for production (Manual)
-npm run build
-```
 
 ### Deployment Options
 
@@ -213,7 +164,7 @@ npm run build
 - [ ] SSL certificate active
 - [ ] Performance monitoring enabled
 
-See `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
+
 
 ## 🤝 Contributing
 
@@ -226,8 +177,8 @@ See `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
 ## 📞 Support
 
 For support or questions:
-- Email: support@uic.edu.ph
-- Phone: +63 82 221-8090
+- Email: *******
+- Phone: ******
 
 ## 📄 License
 

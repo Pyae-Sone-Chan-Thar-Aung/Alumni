@@ -86,12 +86,12 @@ College of Computer Studies graduates worldwide.`}
                   <div className="stat-item">
                     <FaUsers />
                     <span>{stats.totalAlumni.toLocaleString()}+</span>
-                    <p>Alumni Worldwide</p>
+                    <p>Current Registered Alumni</p>
                   </div>
                   <div className="stat-item">
                     <FaBriefcase />
                     <span>{stats.jobPlacements.toLocaleString()}+</span>
-                    <p>Job Placements</p>
+                    <p>Job Vacancies</p>
                   </div>
                   <div className="stat-item">
                     <FaCalendarAlt />
@@ -111,14 +111,6 @@ College of Computer Studies graduates worldwide.`}
         <div className="container">
           <h2>What We Offer</h2>
           <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FaUsers />
-              </div>
-              <h3>Connect with Batchmates</h3>
-              <p>Reconnect with your classmates and build lasting relationships with fellow alumni.</p>
-              <Link to="/batchmates" className="feature-link">Learn More</Link>
-            </div>
 
             <div className="feature-card">
               <div className="feature-icon">
@@ -142,9 +134,9 @@ College of Computer Studies graduates worldwide.`}
               <div className="feature-icon">
                 <FaCalendarAlt />
               </div>
-              <h3>Alumni Events & Announcements</h3>
+              <h3>Professional Development</h3>
               <p>Create and join alumni events with notifications. Announcements are filtered to alumni‑relevant events and sourced from the UIC website and official Facebook pages.</p>
-              <Link to="/news" className="feature-link">Browse Events</Link>
+              <Link to="/job-opportunities" className="feature-link">Browse Events</Link>
             </div>
           </div>
         </div>

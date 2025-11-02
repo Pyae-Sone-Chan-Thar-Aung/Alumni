@@ -543,6 +543,18 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); 
 }
 
+/* Grid wrapper for showing two Facebook sections side by side when authenticated */
+.facebook-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+  margin: var(--spacing-2xl) 0;
+}
+
+.facebook-grid .facebook-section {
+  max-width: initial;
+  margin: 0;
+}
 .embed-controls { 
   display: flex; 
   justify-content: center; 
@@ -737,6 +749,9 @@
   
   .facebook-section, .fb-embed-wrap {
     max-width: 90%;
+  }
+  .facebook-grid {
+    grid-template-columns: 1fr;
   }
 }
 

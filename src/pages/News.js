@@ -3,6 +3,7 @@ import supabase from '../config/supabaseClient';
 import { FaSearch, FaCalendarAlt, FaTag, FaNewspaper, FaBullhorn, FaGraduationCap, FaTimes, FaFacebook } from 'react-icons/fa';
 import './News.css';
 import '../components/SearchBar.css';
+import { useAuth } from '../context/AuthContext';
 
 const News = () => {
   const [news, setNews] = useState([]);
@@ -15,6 +16,13 @@ const News = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFacebook, setShowFacebook] = useState(true);
   const itemsPerPage = 9;
+
+  const { isAuthenticated } = useAuth();
+
+  // Facebook embed expand/collapse state
+  const [fbExpanded, setFbExpanded] = useState({ main: false, ccs: false });
+  const mainFbHeight = fbExpanded.main ? 900 : 600;
+  const ccsFbHeight = fbExpanded.ccs ? 900 : 600;
 
   const categories = ['All', 'Event', 'Career', 'Announcement', 'Professional Development', 'Scholarship', 'Guide'];
 
@@ -125,8 +133,8 @@ const News = () => {
               )}
             </div>
             <div className="filter-dropdown">
-              <select 
-                value={selectedCategory} 
+              <select
+                value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="filter-select"
               >
@@ -229,16 +237,16 @@ const News = () => {
 
         {!loading && filteredNews.length > 0 && totalPages > 1 && (
           <div className="pagination">
-            <button 
-              className="page-btn" 
+            <button
+              className="page-btn"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               Previous
             </button>
             <span className="page-info">Page {currentPage} of {totalPages}</span>
-            <button 
-              className="page-btn" 
+            <button
+              className="page-btn"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
@@ -249,30 +257,90 @@ const News = () => {
 
         {/* Facebook Feed Section */}
         {showFacebook && (
-          <div className="facebook-section">
-            <div className="section-header">
-              <h2>
-                <FaFacebook /> Latest from UIC Facebook Page
-              </h2>
+          isAuthenticated ? (
+            <div className="facebook-grid">
+              <div className="facebook-section">
+                <div className="section-header">
+                  <h2>
+                    <FaFacebook /> Latest from UIC Facebook Page
+                  </h2>
+                </div>
+                <div className="facebook-embed">
+                  <iframe
+                    src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fuicph&tabs=timeline&width=500&height=600&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&appId"
+                    width="100%"
+                    height={mainFbHeight}
+                    style={{ border: 'none', overflow: 'hidden' }}
+                    scrolling="no"
+                    frameBorder="0"
+                    allowFullScreen={true}
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  />
+                </div>
+                <div className="facebook-actions" style={{ gap: 12, display: 'flex', justifyContent: 'center' }}>
+                  <button className="btn-primary" title={fbExpanded.main ? 'Show Less' : 'Show More'} onClick={() => setFbExpanded((s) => ({ ...s, main: !s.main }))}>
+                    {fbExpanded.main ? 'Show Less' : 'Show More'}
+                  </button>
+                  <button className="btn-primary" onClick={() => window.open('https://www.facebook.com/uicph', '_blank')}>
+                    Visit Facebook Page
+                  </button>
+                </div>
+              </div>
+
+              <div className="facebook-section">
+                <div className="section-header">
+                  <h2>
+                    <FaFacebook /> Latest from UIC CCS Facebook Page
+                  </h2>
+                </div>
+                <div className="facebook-embed">
+                  <iframe
+                    src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fuic.ccs&tabs=timeline&width=500&height=600&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&appId"
+                    width="100%"
+                    height={ccsFbHeight}
+                    style={{ border: 'none', overflow: 'hidden' }}
+                    scrolling="no"
+                    frameBorder="0"
+                    allowFullScreen={true}
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  />
+                </div>
+                <div className="facebook-actions" style={{ gap: 12, display: 'flex', justifyContent: 'center' }}>
+                  <button className="btn-primary" title={fbExpanded.ccs ? 'Show Less' : 'Show More'} onClick={() => setFbExpanded((s) => ({ ...s, ccs: !s.ccs }))}>
+                    {fbExpanded.ccs ? 'Show Less' : 'Show More'}
+                  </button>
+                  <button className="btn-primary" onClick={() => window.open('https://www.facebook.com/uic.ccs', '_blank')}>
+                    Visit CCS Page
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="facebook-embed">
-              <iframe
-                src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fuicofficial&tabs=timeline&width=500&height=600&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&appId"
-                width="100%"
-                height="600"
-                style={{ border: 'none', overflow: 'hidden' }}
-                scrolling="no"
-                frameBorder="0"
-                allowFullScreen={true}
-                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-              />
+          ) : (
+            <div className="facebook-section">
+              <div className="section-header">
+                <h2>
+                  <FaFacebook /> Latest from UIC Facebook Page
+                </h2>
+              </div>
+              <div className="facebook-embed">
+                <iframe
+                  src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fuicofficial&tabs=timeline&width=500&height=600&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&appId"
+                  width="100%"
+                  height="600"
+                  style={{ border: 'none', overflow: 'hidden' }}
+                  scrolling="no"
+                  frameBorder="0"
+                  allowFullScreen={true}
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                />
+              </div>
+              <div className="facebook-actions">
+                  <button className="btn-primary" onClick={() => window.open('https://www.facebook.com/uicph', '_blank')}>
+                    Visit Facebook Page
+                  </button>
+              </div>
             </div>
-            <div className="facebook-actions">
-              <button className="btn-primary" onClick={() => window.open('https://www.facebook.com/uicofficial', '_blank')}>
-                Visit Facebook Page
-              </button>
-            </div>
-          </div>
+          )
         )}
       </div>
 

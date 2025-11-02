@@ -4,6 +4,7 @@ import supabase from '../config/supabaseClient';
 import { FaSearch, FaCalendarAlt, FaNewspaper, FaImages, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './News.css';
 import './Gallery.css';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 6;
 
@@ -15,6 +16,8 @@ const NewsGallery = () => {
   const [fbPaging, setFbPaging] = useState(null);
   const [fbLoadedOnce, setFbLoadedOnce] = useState(false);
   const [fbHeight, setFbHeight] = useState(600);
+  const { isAuthenticated } = useAuth();
+  const [fbHeights, setFbHeights] = useState({ uic: 600, ccs: 600 });
 
   // Fallback: show Facebook Page Plugin if no token/id configured
   const hasFbCreds = !!process.env.REACT_APP_FB_PAGE_ID && !!process.env.REACT_APP_FB_PAGE_TOKEN;
@@ -225,31 +228,91 @@ const NewsGallery = () => {
               </div>
             )}
             
-            {/* Show Facebook embed when no API credentials */}
+            {/* Show Facebook embed(s) when no API credentials */}
             {!hasFbCreds && (
-              <div className="fb-embed-wrap" style={{ marginTop: '2rem' }}>
-                <h2 style={{ marginBottom: '1rem', textAlign: 'center' }}>Latest from UIC Facebook Page</h2>
-                <iframe
-                  title="UIC Facebook Page"
-                  src={
-                    'https://www.facebook.com/plugins/page.php' +
-                    '?href=' + encodeURIComponent('https://www.facebook.com/uicph') +
-                    '&tabs=' + encodeURIComponent('timeline,photos') +
-                    `&width=1000&height=${fbHeight}&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`
-                  }
-                  width="100%"
-                  height={fbHeight}
-                  style={{ border: 'none', overflow: 'hidden', borderRadius: 12 }}
-                  scrolling="no"
-                  frameBorder="0"
-                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                />
-                <div className="embed-controls">
-                  <button className="btn btn-primary" onClick={() => setFbHeight(h => (h === 600 ? 900 : 600))}>
-                    {fbHeight === 600 ? 'Show More' : 'Show Less'}
-                  </button>
+              isAuthenticated ? (
+                <div className="facebook-grid">
+                  <div className="facebook-section">
+                    <div className="section-header">
+                      <h2>Latest from UIC Facebook Page</h2>
+                    </div>
+                    <div className="facebook-embed">
+                      <iframe
+                        title="UIC Facebook Page"
+                        src={
+                          'https://www.facebook.com/plugins/page.php' +
+                          '?href=' + encodeURIComponent('https://www.facebook.com/uicph') +
+                          '&tabs=' + encodeURIComponent('timeline') +
+                          `&width=500&height=${fbHeights.uic}&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false`
+                        }
+                        width="100%"
+                        height={fbHeights.uic}
+                        style={{ border: 'none', overflow: 'hidden', borderRadius: 12 }}
+                        scrolling="no"
+                        frameBorder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                      />
+                    </div>
+                    <div className="embed-controls">
+                      <button className="btn btn-primary" title={fbHeights.uic === 600 ? 'Show More' : 'Show Less'} onClick={() => setFbHeights(h => ({ ...h, uic: h.uic === 600 ? 900 : 600 }))}>
+                        {fbHeights.uic === 600 ? 'Show More' : 'Show Less'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="facebook-section">
+                    <div className="section-header">
+                      <h2>Latest from UIC CCS Facebook Page</h2>
+                    </div>
+                    <div className="facebook-embed">
+                      <iframe
+                        title="UIC CCS Facebook Page"
+                        src={
+                          'https://www.facebook.com/plugins/page.php' +
+                          '?href=' + encodeURIComponent('https://www.facebook.com/uic.ccs') +
+                          '&tabs=' + encodeURIComponent('timeline') +
+                          `&width=500&height=${fbHeights.ccs}&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false`
+                        }
+                        width="100%"
+                        height={fbHeights.ccs}
+                        style={{ border: 'none', overflow: 'hidden', borderRadius: 12 }}
+                        scrolling="no"
+                        frameBorder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                      />
+                    </div>
+                    <div className="embed-controls">
+                      <button className="btn btn-primary" title={fbHeights.ccs === 600 ? 'Show More' : 'Show Less'} onClick={() => setFbHeights(h => ({ ...h, ccs: h.ccs === 600 ? 900 : 600 }))}>
+                        {fbHeights.ccs === 600 ? 'Show More' : 'Show Less'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="fb-embed-wrap" style={{ marginTop: '2rem' }}>
+                  <h2 style={{ marginBottom: '1rem', textAlign: 'center' }}>Latest from UIC Facebook Page</h2>
+                  <iframe
+                    title="UIC Facebook Page"
+                    src={
+                      'https://www.facebook.com/plugins/page.php' +
+                      '?href=' + encodeURIComponent('https://www.facebook.com/uicph') +
+                      '&tabs=' + encodeURIComponent('timeline,photos') +
+                      `&width=1000&height=${fbHeight}&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`
+                    }
+                    width="100%"
+                    height={fbHeight}
+                    style={{ border: 'none', overflow: 'hidden', borderRadius: 12 }}
+                    scrolling="no"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  />
+                  <div className="embed-controls">
+                    <button className="btn btn-primary" onClick={() => setFbHeight(h => (h === 600 ? 900 : 600))}>
+                      {fbHeight === 600 ? 'Show More' : 'Show Less'}
+                    </button>
+                  </div>
+                </div>
+              )
             )}
             
             {/* Facebook load more button when using API */}

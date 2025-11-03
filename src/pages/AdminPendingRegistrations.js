@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { supabase } from '../config/supabaseClient';
 import { FaCheck, FaTimes, FaEye, FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaBuilding, FaMapMarkerAlt, FaClock, FaSpinner, FaSearch, FaChevronLeft, FaChevronRight, FaUserCheck } from 'react-icons/fa';
 import './AdminPendingRegistrations.css';
+import { sendApprovalEmail, sendRejectionEmail, createNotification } from '../utils/emailService';
 
 const PAGE_SIZE = 10;
 
@@ -242,7 +243,65 @@ const AdminPendingRegistrations = () => {
         }
       }
 
-      toast.success(`Registration ${approve ? 'approved' : 'rejected'} successfully!`);
+      // Send email notification
+      try {
+        if (approve) {
+          const emailResult = await sendApprovalEmail(
+            item.email,
+            item.first_name,
+            item.last_name
+          );
+          
+          if (emailResult.success) {
+            console.log('✅ Approval email sent successfully');
+          } else {
+            console.warn('⚠️ Failed to send approval email:', emailResult.error);
+          }
+          
+          // Create in-app notification if user has an ID
+          if (item.kind === 'user') {
+            await createNotification(
+              item.id,
+              'registration_approved',
+              'Registration Approved',
+              'Your registration for the CCS Alumni Portal has been approved! You can now access all features.'
+            );
+          }
+        } else {
+          console.log('📧 Attempting to send rejection email to:', item.email);
+          console.log('👤 User:', item.first_name, item.last_name);
+          
+          const emailResult = await sendRejectionEmail(
+            item.email,
+            item.first_name,
+            item.last_name
+          );
+          
+          console.log('📬 Email result:', emailResult);
+          
+          if (emailResult.success) {
+            console.log('✅ Rejection email sent successfully to', item.email);
+          } else {
+            console.error('❌ Failed to send rejection email:', emailResult.error);
+            console.error('Full error details:', emailResult);
+          }
+          
+          // Create in-app notification if user has an ID
+          if (item.kind === 'user') {
+            await createNotification(
+              item.id,
+              'registration_rejected',
+              'Registration Not Approved',
+              'Unfortunately, your registration for the CCS Alumni Portal was not approved. Please contact the alumni office for more information.'
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        // Don't fail the approval process if email fails
+      }
+
+      toast.success(`Registration ${approve ? 'approved' : 'rejected'} successfully! ${approve ? 'Approval' : 'Rejection'} email sent to user.`);
       await fetchPendingRegistrations();
       setShowModal(false);
       setSelectedRegistration(null);

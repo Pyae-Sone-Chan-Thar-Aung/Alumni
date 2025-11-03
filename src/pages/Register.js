@@ -18,6 +18,8 @@ const Register = () => {
     employmentStatus: '',
     currentJob: '',
     company: '',
+    degreeProgram: '',
+    university: '',
     address: '',
     city: '',
     country: 'Philippines'
@@ -47,7 +49,23 @@ const Register = () => {
     'Unemployed - Looking',
     'Unemployed - Not Looking',
     'Student',
+    'Pursuing Graduate Studies (Master\'s/PhD)',
     'Retired'
+  ];
+
+  const degreePrograms = [
+    'Master of Science in Computer Science',
+    'Master of Science in Information Technology',
+    'Master of Science in Information Systems',
+    'Master of Science in Data Science',
+    'Master of Science in Cybersecurity',
+    'Master of Science in Software Engineering',
+    'Master of Information Management',
+    'Master of Science in Artificial Intelligence',
+    'PhD in Computer Science',
+    'PhD in Information Technology',
+    'PhD in Information Systems',
+    'Other'
   ];
 
   const handleChange = (e) => {
@@ -100,7 +118,7 @@ const Register = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          try { videoRef.current && videoRef.current.play && videoRef.current.play(); } catch {}
+          try { videoRef.current && videoRef.current.play && videoRef.current.play(); } catch { }
         };
       }
     } catch (err) {
@@ -206,6 +224,10 @@ const Register = () => {
   };
 
   const validateForm = () => {
+    if (!profileImage) {
+      toast.error('Profile picture is required. Please upload an image or take a photo.');
+      return false;
+    }
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return false;
@@ -254,6 +276,8 @@ const Register = () => {
         employment_status: formData.employmentStatus || null,
         current_job: formData.currentJob || null,
         company: formData.company || null,
+        degree_program: formData.degreeProgram || null,
+        university: formData.university || null,
         address: formData.address || null,
         city: formData.city || null,
         country: formData.country || 'Philippines',
@@ -374,7 +398,7 @@ const Register = () => {
 
           <form onSubmit={handleSubmit} className="register-form">
             <div className="form-section">
-              <h3>Profile Picture</h3>
+              <h3>Profile Picture <span style={{ color: 'red' }}>*</span></h3>
               <div className="image-upload-section">
                 <div className="image-preview-container">
                   {imagePreview ? (
@@ -402,7 +426,7 @@ const Register = () => {
                     <FaCamera /> Take Photo
                   </button>
                   <p className="image-help-text">
-                    JPG, JPEG, or PNG. Max size: 5MB
+                    <strong style={{ color: 'red' }}>Required:</strong> JPG, JPEG, or PNG. Max size: 5MB
                   </p>
                 </div>
               </div>
@@ -500,7 +524,7 @@ const Register = () => {
                 </div>
                 <div className="form-group">
                   <label htmlFor="graduationYear" className="form-label">
-                    <FaCalendarAlt /> Graduation Year
+                    <FaCalendarAlt /> Year Graduated
                   </label>
                   <input
                     type="number"
@@ -573,6 +597,44 @@ const Register = () => {
                     </div>
                   </div>
                 )}
+
+              {formData.employmentStatus === 'Pursuing Graduate Studies (Master\'s/PhD)' && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="degreeProgram" className="form-label">
+                      Degree Program
+                    </label>
+                    <select
+                      id="degreeProgram"
+                      name="degreeProgram"
+                      value={formData.degreeProgram}
+                      onChange={handleChange}
+                      className="form-control"
+                      required
+                    >
+                      <option value="">Select your degree program</option>
+                      {degreePrograms.map(program => (
+                        <option key={program} value={program}>{program}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="university" className="form-label">
+                      College/University
+                    </label>
+                    <input
+                      type="text"
+                      id="university"
+                      name="university"
+                      value={formData.university}
+                      onChange={handleChange}
+                      className="form-control"
+                      placeholder="Enter your university name"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="form-section">

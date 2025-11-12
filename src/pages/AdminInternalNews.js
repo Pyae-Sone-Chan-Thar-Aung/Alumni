@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import supabase from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FaTrash, FaPen, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaTrash, FaPen, FaChevronLeft, FaChevronRight, FaImage, FaBullhorn } from 'react-icons/fa';
 import './AdminInternalNews.css';
 
 const PAGE_SIZE = 5;
@@ -17,9 +17,11 @@ const AdminInternalNews = () => {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: '', content: '', is_important: false });
+  const [form, setForm] = useState({ title: '', content: '', category: '', is_important: false, image: null });
   const [publishing, setPublishing] = useState(false);
   const [page, setPage] = useState(1);
+
+  const fileInputRef = useRef(null);
 
   const canManage = user && (user.role === 'admin' || user.role === 'coordinator');
 
@@ -49,6 +51,7 @@ const AdminInternalNews = () => {
         .insert({
           title: form.title.trim(),
           content: form.content.trim(),
+          category: form.category.trim(),
           is_important: !!form.is_important,
           is_published: true,
           published_at: new Date().toISOString(),
@@ -56,7 +59,7 @@ const AdminInternalNews = () => {
         });
       if (error) throw error;
       toast.success('Internal news published');
-      setForm({ title: '', content: '', is_important: false });
+      setForm({ title: '', content: '', category: '', is_important: false, image: null });
       setPage(1);
       fetchItems();
     } catch (e) {
@@ -93,6 +96,19 @@ const AdminInternalNews = () => {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [items, page]);
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setForm((prev) => ({
+        ...prev,
+        image: {
+          file,
+          preview: URL.createObjectURL(file)
+        }
+      }));
+    }
+  };
+
   if (!canManage) {
     return (
       <div className="min-h-[60vh] grid place-items-center" style={{ backgroundColor: '#F9FAFB' }}>
@@ -108,8 +124,7 @@ const AdminInternalNews = () => {
         <header className="page-header">
           <div className="header-left">
             <h1 className="page-title">
-              <span className="emoji">📰</span>
-              Internal Alumni News
+              <FaBullhorn /> Internal Alumni News
             </h1>
             <a href="#publisher" className="header-link">Post important alumni-only announcements.</a>
           </div>
@@ -128,11 +143,28 @@ const AdminInternalNews = () => {
                         <label htmlFor="title">Title</label>
                         <input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Enter a concise announcement title" className="input" />
                       </div>
-                      
+
                     </div>
                     <div className="grid gap-1.5">
                       <label htmlFor="content">Content</label>
                       <textarea id="content" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Write the message for alumni..." rows={5} className="textarea" />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid gap-1.5">
+                        <label htmlFor="category">Category</label>
+                        <select id="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="select">
+                          <option value="">Select category</option>
+                          <option value="announcement">Announcement</option>
+                          <option value="event">Event</option>
+                          <option value="alumni">Alumni News</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 text-sm text-gray-700">
+                          <Toggle checked={form.is_important} onChange={(val) => setForm({ ...form, is_important: val })} />
+                          Mark as Important
+                        </label>
+                      </div>
                     </div>
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={createItem} disabled={!canPublish} className={`inline-flex items-center px-5 py-2.5 text-sm font-medium text-white shadow-sm transition btn ${canPublish ? 'btn-gradient' : 'btn-blue-disabled'}`}>{publishing ? 'Publishing...' : 'Publish'}</button>

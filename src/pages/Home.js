@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaGraduationCap, FaUsers, FaBriefcase, FaNewspaper, FaCalendarAlt, FaMapMarkerAlt, FaPhone, FaEnvelope } from 'react-icons/fa';
 import { supabase } from '../config/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 const Home = () => {
+  const { isAuthenticated } = useAuth();
   const [featuredNews, setFeaturedNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -118,7 +120,12 @@ College of Computer Studies graduates worldwide.`}
               </div>
               <h3>Career Opportunities</h3>
               <p>Explore job opportunities across various industries and advance your career.</p>
-              <Link to="/job-opportunities" className="feature-link">Explore Jobs</Link>
+              {isAuthenticated ? (
+                <Link to="/job-opportunities" className="feature-link">Explore Jobs</Link>
+              ) : (
+                <Link to="/login" className="feature-link">Login to Explore Jobs</Link>
+              )}
+
             </div>
 
             <div className="feature-card">
@@ -136,7 +143,11 @@ College of Computer Studies graduates worldwide.`}
               </div>
               <h3>Professional Development</h3>
               <p>Create and join alumni events with notifications. Announcements are filtered to alumni‑relevant events and sourced from the UIC website and official Facebook pages.</p>
-              <Link to="/job-opportunities" className="feature-link">Browse Events</Link>
+              {isAuthenticated ? (
+                <Link to="/professional-development" className="feature-link">Browse Events</Link>
+              ) : (
+                <Link to="/login" className="feature-link">Login to View Events</Link>
+              )}
             </div>
           </div>
         </div>

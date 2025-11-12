@@ -18,7 +18,43 @@ const JobOpportunities = () => {
   const [savedJobs, setSavedJobs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [locations, setLocations] = useState(['All']);
-  const [types] = useState(['All', 'Full-time']);
+  // Common Philippine cities for job opportunities
+  const commonCities = [
+    'All',
+    'Remote',
+    'Work from Home',
+    'Hybrid',
+    'Bacolod',
+    'Baguio',
+    'BGC',
+    'Batangas',
+    'Bulacan',
+    'Cagayan de Oro',
+    'Cavite',
+    'Cebu City',
+    'Cotabato',
+    'Davao City',
+    'Davao de Oro',
+    'Davao del Norte',
+    'Davao del Sur',
+    'Davao Oriental',
+    'General Santos',
+    'Iligan',
+    'Iloilo City',
+    'Laguna',
+    'Makati',
+    'Mandaluyong',
+    'Manila',
+    'Pampanga',
+    'Pasig',
+    'Quezon City',
+    'Rizal',
+    'Taguig',
+    'Zamboanga City'
+
+  ];
+  // Job types
+  const types = ['All', 'Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary', 'Permanent', 'Remote', 'Hybrid', 'Freelance'];
   const [showJobSubmission, setShowJobSubmission] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -45,8 +81,16 @@ const JobOpportunities = () => {
         submissionImageUrl: j.submission_image_url
       }));
       setJobs(mapped);
-      const locs = Array.from(new Set(mapped.map(j => j.location).filter(Boolean))).sort();
-      setLocations(['All', ...locs]);
+      // Get unique locations from jobs and merge with common cities
+      const jobLocations = Array.from(new Set(mapped.map(j => j.location).filter(Boolean)));
+      // Combine common cities with job locations, remove duplicates, and sort
+      const allLocations = [...new Set([...commonCities, ...jobLocations])].sort((a, b) => {
+        // Keep 'All' at the top
+        if (a === 'All') return -1;
+        if (b === 'All') return 1;
+        return a.localeCompare(b);
+      });
+      setLocations(allLocations);
     };
 
     const fetchSavedJobs = async () => {
@@ -244,7 +288,7 @@ const JobOpportunities = () => {
               </div>
             </div>
             <button className="btn btn-primary" onClick={handlePostJob}>
-              <FaPlus /> {user?.role === 'alumni' ? 'Share Job' : 'Post a Job'}
+              <FaPlus /> {user?.role === 'alumni' ? 'Share Job' : 'Manage Job'}
             </button>
           </div>
           <div className="filters-box">

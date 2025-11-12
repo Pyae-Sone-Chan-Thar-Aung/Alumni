@@ -39,6 +39,7 @@ import AdminAnalytics from './pages/AdminAnalytics';
 import AdminInternalNews from './pages/AdminInternalNews';
 import AdminTracerBuilder from './pages/AdminTracerBuilder';
 import AdminGeocode from './pages/AdminGeocode';
+import ProfessionalDevelopmentEvents from './pages/ProfessionalDevelopmentEvents';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -148,6 +149,10 @@ function AppRoutes() {
           <Route 
             path="/tracer-study" 
             element={isAuthenticated ? <TracerStudy /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/professional-development" 
+            element={isAuthenticated ? <ProfessionalDevelopmentEvents /> : <Navigate to="/login" />} 
           />
           
           {/* Protected Admin Routes */}

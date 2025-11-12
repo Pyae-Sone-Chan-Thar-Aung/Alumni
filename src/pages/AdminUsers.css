@@ -77,12 +77,12 @@
   flex: 1;
 }
 
-/* Search Section */
+/* Search Section - Longer, dominant element */
 .search-control {
   position: relative;
-  max-width: 300px;
   flex: 1;
-  min-width: 200px;
+  min-width: 300px;
+  max-width: none;
 }
 
 .search-icon {
@@ -119,7 +119,7 @@
   color: #9ca3af;
 }
 
-/* Filter select dropdowns */
+/* Filter select dropdowns - Shorter, compact */
 .filter-select {
   padding: 10px 14px;
   border: 1px solid #d1d5db;
@@ -132,6 +132,9 @@
   transition: all 0.2s ease;
   color: #374151;
   min-width: 140px;
+  max-width: 160px;
+  width: auto;
+  flex-shrink: 0;
   height: 42px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -148,6 +151,12 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+}
+
+/* Export Button - Stay on far right */
+.export-btn {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Ensure AdminUsers page select has safe spacing regardless of other global styles */
@@ -1335,6 +1344,7 @@
     opacity: 0;
     transform: translateY(20px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1579,7 +1589,8 @@
   }
 
   .search-control {
-    max-width: none;
+    min-width: 200px;
+    flex: 1;
   }
 
   .filter-controls {
@@ -1589,7 +1600,13 @@
   }
 
   .filter-select,
-  .date-filter,
+  .date-filter {
+    height: 32px;
+    font-size: 11px;
+    min-width: 120px;
+    max-width: 140px;
+  }
+
   .export-btn {
     height: 32px;
     font-size: 11px;

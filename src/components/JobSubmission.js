@@ -257,55 +257,57 @@ const JobSubmission = ({ onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Basic info always required */}
-          <div className="form-section">
-            <h3>Basic Information</h3>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Job Title *</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g., Software Engineer"
-                  required={submissionType === 'form'}
-                />
+          {/* Basic info only required for form submission */}
+          {submissionType === 'form' && (
+            <div className="form-section">
+              <h3>Basic Information</h3>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Job Title *</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="e.g., Software Engineer"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Company Name *</label>
+                  <input
+                    type="text"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    placeholder="e.g., Tech Corp Inc."
+                    required
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Company Name *</label>
-                <input
-                  type="text"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  placeholder="e.g., Tech Corp Inc."
-                  required={submissionType === 'form'}
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Location</label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="e.g., Davao City, Philippines"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Job Type</label>
+                  <select
+                    value={formData.job_type}
+                    onChange={(e) => setFormData({ ...formData, job_type: e.target.value })}
+                  >
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Location</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="e.g., Davao City, Philippines"
-                />
-              </div>
-              <div className="form-group">
-                <label>Job Type</label>
-                <select
-                  value={formData.job_type}
-                  onChange={(e) => setFormData({ ...formData, job_type: e.target.value })}
-                >
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Internship">Internship</option>
-                </select>
-              </div>
-            </div>
-          </div>
+          )}
 
           {submissionType === 'form' && (
             <div className="form-section">

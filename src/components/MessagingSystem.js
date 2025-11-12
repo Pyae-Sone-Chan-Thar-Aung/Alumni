@@ -14,7 +14,9 @@ import {
   FaReply,
   FaTrash,
   FaBell,
-  FaBellSlash
+  FaBellSlash,
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
 import './MessagingSystem.css';
 
@@ -669,7 +671,7 @@ const MessagingSystem = () => {
                       <p className="message-preview">{message.content.substring(0, 100)}...</p>
                     </div>
                     <div className="message-status">
-                      {message.is_read ? <FaCheckDouble className="read" /> : <FaCheck className="unread" />}
+                      {message.is_read ? <FaEye className="read" /> : <FaEyeSlash className="unread" />}
                     </div>
                   </div>
                 ))}
@@ -710,7 +712,7 @@ const MessagingSystem = () => {
                       <p className="message-preview">{message.content.substring(0, 100)}...</p>
                     </div>
                     <div className="message-status">
-                      {message.is_read ? <FaCheckDouble className="read" /> : <FaCheck className="unread" />}
+                      {message.is_read ? <FaEye className="read" /> : <FaEyeSlash className="unread" />}
                     </div>
                   </div>
                 ))}
@@ -826,7 +828,7 @@ const MessagingSystem = () => {
                       {notification.type === 'message_received' && <FaPaperPlane />}
                       {notification.type === 'connection_request' && <FaUser />}
                       {notification.type === 'connection_accepted' && <FaCheck />}
-                      {notification.type === 'message_read' && <FaCheckDouble />}
+                      {notification.type === 'message_read' && <FaEye />}
                     </div>
                     <div className="notification-content">
                       <h4>{notification.title}</h4>
@@ -943,7 +945,7 @@ const MessagingSystem = () => {
 
               {selectedMessage.is_read && selectedMessage.read_at && (
                 <div className="message-read-info">
-                  <FaCheckDouble className="read" />
+                  <FaEye className="read" />
                   Read on {formatDate(selectedMessage.read_at)}
                 </div>
               )}

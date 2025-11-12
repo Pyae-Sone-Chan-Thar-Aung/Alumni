@@ -116,7 +116,7 @@
 .chatbot-toggle-text {
   flex: 1;
   padding: 0 20px 0 12px;
-  color: var(--color-text);
+  color: #f97316; /* orange text for 'Ask Jaguar' */
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: 0.3px;

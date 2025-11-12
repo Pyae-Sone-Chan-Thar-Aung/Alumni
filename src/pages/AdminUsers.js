@@ -18,24 +18,24 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       console.log('🔍 Starting to fetch users for admin dashboard...');
-      
+
       // Try to use the user management view first
       let { data: usersData, error: usersError } = await supabase
         .from('user_management_view')
         .select('*')
         .order('user_created_at', { ascending: false });
-      
+
       // If view doesn't exist, fall back to direct table query
       if (usersError && usersError.message.includes('user_management_view')) {
         console.log('🔄 user_management_view not found, using direct table query...');
         usersError = null;
       }
-      
+
       console.log('📊 Users query result:', { data: usersData, error: usersError });
-      
+
       if (usersError) {
         console.error('❌ Error fetching users:', usersError);
-        
+
         // Fallback to direct table query
         console.log('🔄 Trying fallback query...');
         const { data: fallbackData, error: fallbackError } = await supabase
@@ -57,13 +57,13 @@ const AdminUsers = () => {
             )
           `)
           .order('created_at', { ascending: false });
-        
+
         if (fallbackError) {
           console.error('❌ Fallback query also failed:', fallbackError);
           toast.error('Failed to fetch users. Please check database connection.');
           return;
         }
-        
+
         // Process fallback data
         const processedUsers = (fallbackData || []).map(u => {
           const profile = u.user_profiles?.[0] || {};
@@ -73,7 +73,7 @@ const AdminUsers = () => {
             course: profile.program,
             profileImage: profile.profile_image_url
           });
-          
+
           return {
             id: u.id,
             firstName: u.first_name || '',
@@ -96,19 +96,19 @@ const AdminUsers = () => {
             isVerified: u.is_verified || false,
           };
         });
-        
+
         console.log(`📋 Processed ${processedUsers.length} users from fallback`);
         setUsers(processedUsers);
         return;
       }
-      
+
       if (!usersData || usersData.length === 0) {
         console.warn('⚠️ No users found in database');
         toast.info('No users found in the database');
         setUsers([]);
         return;
       }
-      
+
       // Process view data
       const processedUsers = usersData.map(u => {
         console.log('🔍 Processing user:', {
@@ -117,7 +117,7 @@ const AdminUsers = () => {
           course: u.course || u.program,
           profileImage: u.profile_image_url
         });
-        
+
         return {
           id: u.id,
           firstName: u.first_name || '',
@@ -140,11 +140,11 @@ const AdminUsers = () => {
           isVerified: u.is_verified || false,
         };
       });
-      
+
       console.log(`✅ Found ${usersData.length} users`);
       console.log(`📋 Final processed users:`, processedUsers);
       setUsers(processedUsers);
-      
+
     } catch (error) {
       console.error('❌ Unexpected error fetching users:', error);
       toast.error('An unexpected error occurred while fetching users');
@@ -167,8 +167,8 @@ const AdminUsers = () => {
   // Filter and search
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.course.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.course.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesStatus && matchesRole;
@@ -190,7 +190,7 @@ const AdminUsers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ 
+        .update({
           approval_status: newStatus,
           is_verified: newStatus === 'approved',
           approved_at: newStatus === 'approved' ? new Date().toISOString() : null
@@ -199,7 +199,7 @@ const AdminUsers = () => {
 
       if (error) throw error;
 
-      setUsers(prev => prev.map(u => 
+      setUsers(prev => prev.map(u =>
         u.id === userId ? { ...u, status: newStatus } : u
       ));
 
@@ -224,7 +224,7 @@ const AdminUsers = () => {
 
     const headers = [
       'Full Name',
-      'First Name', 
+      'First Name',
       'Last Name',
       'Email',
       'Phone',
@@ -241,7 +241,7 @@ const AdminUsers = () => {
       'City',
       'Country'
     ];
-    
+
     const csvData = filteredUsers.map(user => [
       user.name,
       user.firstName,
@@ -311,15 +311,7 @@ const AdminUsers = () => {
               <option value="approved">Active</option>
               <option value="rejected">Banned</option>
             </select>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Roles</option>
-              <option value="alumni">User</option>
-              <option value="admin">Admin</option>
-            </select>
+
           </div>
           <button className="export-btn" onClick={exportToCSV}>
             <FaDownload /> Export CSV
@@ -368,8 +360,8 @@ const AdminUsers = () => {
                     <td>{user.email}</td>
                     <td>
                       <span className={`status-badge ${user.status}`}>
-                        {user.status === 'approved' ? 'ACTIVE' : 
-                         user.status === 'rejected' ? 'BANNED' : 'PENDING'}
+                        {user.status === 'approved' ? 'ACTIVE' :
+                          user.status === 'rejected' ? 'BANNED' : 'PENDING'}
                       </span>
                     </td>
                     <td>
@@ -526,8 +518,8 @@ const AdminUsers = () => {
                   <div className="detail-row">
                     <span className="detail-label">Status</span>
                     <span className="detail-value">
-                      {selectedUser.status === 'approved' ? 'Active' : 
-                       selectedUser.status === 'rejected' ? 'Banned' : 'Pending'}
+                      {selectedUser.status === 'approved' ? 'Active' :
+                        selectedUser.status === 'rejected' ? 'Banned' : 'Pending'}
                     </span>
                   </div>
                   <div className="detail-row">

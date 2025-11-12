@@ -681,7 +681,7 @@ const AdminDashboard = () => {
 
           {/* Power BI Grid Layout */}
           <div className="powerbi-grid">
-            
+
             {/* Admin Tools - Moved to Top */}
             <div className="powerbi-card tools-card">
               <div className="powerbi-card-header">
@@ -742,8 +742,8 @@ const AdminDashboard = () => {
                   <button className="tool-card" onClick={exportUsersCSV}>
                     <div className="tool-icon"><FaDownload /></div>
                     <div className="tool-text">
-                      <div className="tool-title">Generate Reports</div>
-                      <div className="tool-sub">Export data</div>
+                      <div className="tool-title">Download Data</div>
+                      <div className="tool-sub">Export Alumni data</div>
                     </div>
                   </button>
 
@@ -788,9 +788,9 @@ const AdminDashboard = () => {
                 </div>
                 <div className="distribution-toggle">
                   {['Employment', 'Gender'].map(view => (
-                    <button 
-                      key={view} 
-                      className={`toggle-btn ${distributionView === view ? 'active' : ''}`} 
+                    <button
+                      key={view}
+                      className={`toggle-btn ${distributionView === view ? 'active' : ''}`}
                       onClick={() => setDistributionView(view)}
                     >
                       {view}
@@ -800,8 +800,8 @@ const AdminDashboard = () => {
               </div>
               <div className="powerbi-card-body">
                 <div className="chart-wrapper" style={{ height: 280 }}>
-                  <Doughnut 
-                    data={distributionView === 'Employment' ? employmentChartData : genderChartData} 
+                  <Doughnut
+                    data={distributionView === 'Employment' ? employmentChartData : genderChartData}
                     options={{
                       ...chartOptions,
                       plugins: {
@@ -829,7 +829,7 @@ const AdminDashboard = () => {
                           padding: 10,
                           displayColors: true,
                           callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                               const label = context.label || '';
                               const value = context.parsed || 0;
                               const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -845,7 +845,7 @@ const AdminDashboard = () => {
                         duration: 600,
                         easing: 'easeInOutQuart'
                       }
-                    }} 
+                    }}
                   />
                 </div>
               </div>
@@ -894,93 +894,93 @@ const AdminDashboard = () => {
                           {pendingUsers
                             .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                             .map((user) => (
-                          <tr key={user.id}>
-                            <td>
-                              <div className="user-info-cell">
-                                {user.profile_image_url ? (
-                                  <img src={user.profile_image_url} alt="Profile" className="table-avatar" />
-                                ) : (
-                                  <div className="table-avatar-placeholder">
-                                    {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
+                              <tr key={user.id}>
+                                <td>
+                                  <div className="user-info-cell">
+                                    {user.profile_image_url ? (
+                                      <img src={user.profile_image_url} alt="Profile" className="table-avatar" />
+                                    ) : (
+                                      <div className="table-avatar-placeholder">
+                                        {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
+                                      </div>
+                                    )}
+                                    <span className="user-name">{user.first_name} {user.last_name}</span>
                                   </div>
-                                )}
-                                <span className="user-name">{user.first_name} {user.last_name}</span>
-                              </div>
-                            </td>
-                            <td className="email-cell">{user.email}</td>
-                            <td>{user.program || '—'}</td>
-                            <td>{user.graduation_year || '—'}</td>
-                            <td className="employment-cell">
-                              {user.current_job ? (
-                                <div className="employment-info">
-                                  <span className="job-title">{user.current_job}</span>
-                                  <span className="company-name">{user.company}</span>
-                                </div>
-                              ) : '—'}
-                            </td>
-                            <td>
-                              <div className="table-actions-icons">
-                                <button
-                                  className="action-icon-btn view"
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setShowUserDetailsModal(true);
-                                  }}
-                                  title="View Details"
-                                >
-                                  <FaEye />
-                                </button>
-                                <button
-                                  className="action-icon-btn approve"
-                                  onClick={() => handleApproval(user.id, 'approve')}
-                                  disabled={loading}
-                                  title="Approve"
-                                >
-                                  <FaCheckCircle />
-                                </button>
-                                <button
-                                  className="action-icon-btn reject"
-                                  onClick={() => handleApproval(user.id, 'reject')}
-                                  disabled={loading}
-                                  title="Reject"
-                                >
-                                  <FaTimes />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                </td>
+                                <td className="email-cell">{user.email}</td>
+                                <td>{user.program || '—'}</td>
+                                <td>{user.graduation_year || '—'}</td>
+                                <td className="employment-cell">
+                                  {user.current_job ? (
+                                    <div className="employment-info">
+                                      <span className="job-title">{user.current_job}</span>
+                                      <span className="company-name">{user.company}</span>
+                                    </div>
+                                  ) : '—'}
+                                </td>
+                                <td>
+                                  <div className="table-actions-icons">
+                                    <button
+                                      className="action-icon-btn view"
+                                      onClick={() => {
+                                        setSelectedUser(user);
+                                        setShowUserDetailsModal(true);
+                                      }}
+                                      title="View Details"
+                                    >
+                                      <FaEye />
+                                    </button>
+                                    <button
+                                      className="action-icon-btn approve"
+                                      onClick={() => handleApproval(user.id, 'approve')}
+                                      disabled={loading}
+                                      title="Approve"
+                                    >
+                                      <FaCheckCircle />
+                                    </button>
+                                    <button
+                                      className="action-icon-btn reject"
+                                      onClick={() => handleApproval(user.id, 'reject')}
+                                      disabled={loading}
+                                      title="Reject"
+                                    >
+                                      <FaTimes />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
-                {pendingUsers.length > itemsPerPage && (
-                  <div className="pagination">
-                    <button
-                      className="pagination-btn"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </button>
-                    <span className="pagination-info">
-                      Page {currentPage} of {Math.ceil(pendingUsers.length / itemsPerPage)}
-                    </span>
-                    <button
-                      className="pagination-btn"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(pendingUsers.length / itemsPerPage), prev + 1))}
-                      disabled={currentPage >= Math.ceil(pendingUsers.length / itemsPerPage)}
-                    >
-                      Next
-                    </button>
+                    {pendingUsers.length > itemsPerPage && (
+                      <div className="pagination">
+                        <button
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </button>
+                        <span className="pagination-info">
+                          Page {currentPage} of {Math.ceil(pendingUsers.length / itemsPerPage)}
+                        </span>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(prev => Math.min(Math.ceil(pendingUsers.length / itemsPerPage), prev + 1))}
+                          disabled={currentPage >= Math.ceil(pendingUsers.length / itemsPerPage)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="no-pending-message">
+                    <FaUserCheck />
+                    <p>No pending approvals at this time.</p>
                   </div>
                 )}
-              </>
-            ) : (
-              <div className="no-pending-message">
-                <FaUserCheck />
-                <p>No pending approvals at this time.</p>
-              </div>
-            )}
               </div>
             </div>
 

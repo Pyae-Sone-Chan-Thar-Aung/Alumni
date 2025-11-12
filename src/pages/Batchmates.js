@@ -209,7 +209,7 @@ const Batchmates = () => {
       toast.success('Connection request sent! The recipient will be notified.');
     } catch (error) {
       console.error('Error sending connection request:', error);
-      toast.error('Failed to send connection request');
+      toast.error(`Failed to send connection request: ${error.message}`);
     }
   };
   

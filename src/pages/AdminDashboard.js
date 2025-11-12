@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabaseClient';
-import { FaUsers, FaUserCheck, FaNewspaper, FaBriefcase, FaChartBar, FaClipboardList, FaUserTimes, FaClock, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaEye, FaImage, FaPlus, FaEdit, FaTimes, FaUserPlus, FaGraduationCap, FaBuilding, FaDownload, FaLink, FaEnvelope, FaUser, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaUsers, FaUserCheck, FaNewspaper, FaBriefcase, FaChartBar, FaClipboardList, FaUserTimes, FaClock, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaEye, FaImage, FaPlus, FaEdit, FaTimes, FaUserPlus, FaGraduationCap, FaBuilding, FaDownload, FaLink, FaEnvelope, FaUser, FaMapMarkerAlt, FaCalendarAlt } from 'react-icons/fa';
 import './AdminDashboard.css';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
@@ -35,21 +35,25 @@ const AdminDashboard = () => {
   const [emailsInput, setEmailsInput] = useState('');
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
+  
+  // Content dropdown state
+  const [showContentDropdown, setShowContentDropdown] = useState(false);
 
   // small UX trends for chips (purely illustrative)
   const [trends, setTrends] = useState({ users: 0, pending: 0, news: 0, jobs: 0, tracer: 0 });
 
   // Analytics state for charts
   const [analytics, setAnalytics] = useState({
-    employment: { employed: 0, selfEmployed: 0, unemployed: 0, graduateSchool: 0 },
+    employment: { employed: 0, selfEmployed: 0, unemployed: 0 },
     gender: {},
-    graduationYears: {}
+    graduationYears: {},
+    graduateSchool: { masters: 0, doctorate: 0, notPursuing: 0 }
   });
 
   // Chart range tabs: Year / Month
   const [chartRange, setChartRange] = useState('Year');
   const [gradYearsFilter, setGradYearsFilter] = useState('10y'); // '10y' | '20y' | 'All'
-  const [distributionView, setDistributionView] = useState('Employment'); // 'Employment' | 'Gender'
+  const [distributionView, setDistributionView] = useState('Employment'); // 'Employment' | 'Gender' | 'Graduate School'
 
   // Date range helpers
   const getRangeBounds = (range) => {
@@ -116,8 +120,8 @@ const AdminDashboard = () => {
       // Pending users (all-time list for modal)
       supabase.from('user_management_view').select('*').eq('approval_status', 'pending').order('user_created_at', { ascending: false }),
 
-      // Analytics detail
-      supabase.from('tracer_study_responses').select('employment_status, graduation_year, gender, created_at').gte('created_at', startISO).lt('created_at', endISO),
+      // Analytics detail (gracefully handle missing columns)
+      supabase.from('tracer_study_responses').select('*').gte('created_at', startISO).lt('created_at', endISO),
       supabase.from('user_profiles').select('graduation_year'),
       // Pending registrations to merge details by email
       supabase.from('pending_registrations').select('email, phone, course, batch_year, graduation_year, current_job, company, address, city, country, profile_image_url, status').eq('status', 'pending'),
@@ -149,23 +153,60 @@ const AdminDashboard = () => {
     ]);
 
     // Compute analytics for charts
-    const employment = { employed: 0, selfEmployed: 0, unemployed: 0, graduateSchool: 0 };
+    const employment = { employed: 0, selfEmployed: 0, unemployed: 0 };
     const gender = {};
     const graduationYears = {};
+    const graduateSchool = { masters: 0, doctorate: 0, notPursuing: 0 };
 
-    if (!tracerDataError && tracerData) {
+    if (!tracerDataError && tracerData && tracerData.length > 0) {
       tracerData.forEach(r => {
         const status = (r.employment_status || '').toLowerCase();
+        // Employment status (excluding graduate school)
         if (status.includes('unemployed')) {
           employment.unemployed++;
         } else if (status.includes('self')) {
           employment.selfEmployed++;
-        } else if (status.includes('graduate')) {
-          employment.graduateSchool++;
-        } else if (status.includes('employed')) {
+        } else if (status.includes('employed') && !status.includes('graduate')) {
           employment.employed++;
         }
 
+        // Graduate School tracking - Check BOTH new fields AND old employment_status for backward compatibility
+        let graduateSchoolCounted = false;
+        
+        // First, check the new dedicated fields (if they exist and are set)
+        if (r.pursuing_further_education === true) {
+          const eduType = (r.further_education_type || '').toLowerCase();
+          if (eduType.includes('masters')) {
+            graduateSchool.masters++;
+          } else if (eduType.includes('doctorate') || eduType.includes('phd')) {
+            graduateSchool.doctorate++;
+          } else {
+            // Has pursuing_further_education but no specific type - default to masters
+            graduateSchool.masters++;
+          }
+          graduateSchoolCounted = true;
+        } 
+        // Backward compatibility: Check employment_status for graduate school indicators
+        else if (status.includes('graduate') || status.includes('student')) {
+          // Check if it's specifically graduate studies
+          if (status.includes('masters') || status.includes('master')) {
+            graduateSchool.masters++;
+          } else if (status.includes('doctorate') || status.includes('phd') || status.includes('doctoral')) {
+            graduateSchool.doctorate++;
+          } else if (status.includes('graduate')) {
+            // Generic "graduate studies" - default to masters
+            graduateSchool.masters++;
+          }
+          graduateSchoolCounted = true;
+        }
+        
+        // Only count as "Not Pursuing" if we have explicit data saying so
+        if (!graduateSchoolCounted && r.pursuing_further_education === false) {
+          graduateSchool.notPursuing++;
+        }
+        // If pursuing_further_education is null/undefined and no graduate status in employment, don't count
+
+        // Gender tracking
         const g = r.gender || 'Not specified';
         gender[g] = (gender[g] || 0) + 1;
 
@@ -255,7 +296,7 @@ const AdminDashboard = () => {
       tracerStudyResponses: tracerCount || 0
     }));
 
-    setAnalytics({ employment, gender, graduationYears });
+    setAnalytics({ employment, gender, graduationYears, graduateSchool });
     setPendingUsers(processedPending);
 
     // Trends: period-over-period change
@@ -596,25 +637,44 @@ const AdminDashboard = () => {
   // Chart data for selected range (no artificial scaling; values are range-limited above)
   const mult = 1;
   const employmentChartData = {
-    labels: ['Employed', 'Self-Employed', 'Unemployed', 'Graduate School'],
+    labels: ['Employed', 'Self-Employed', 'Unemployed'],
     datasets: [{
       data: [
         Math.round((analytics.employment.employed || 0) * mult),
         Math.round((analytics.employment.selfEmployed || 0) * mult),
-        Math.round((analytics.employment.unemployed || 0) * mult),
-        Math.round((analytics.employment.graduateSchool || 0) * mult)
+        Math.round((analytics.employment.unemployed || 0) * mult)
       ],
       backgroundColor: [
         '#10B981', // Soft teal-green for Employed
         '#6EE7B7', // Light mint for Self-Employed
-        '#FCA5A5', // Soft coral for Unemployed
-        '#3B82F6'  // Muted blue for Graduate School
+        '#FCA5A5'  // Soft coral for Unemployed
       ],
       borderColor: [
         'rgba(16, 185, 129, 0.1)', // Minimal border
         'rgba(110, 231, 183, 0.1)',
-        'rgba(252, 165, 165, 0.1)',
-        'rgba(59, 130, 246, 0.1)'
+        'rgba(252, 165, 165, 0.1)'
+      ],
+      borderWidth: 0
+    }]
+  };
+
+  const graduateSchoolChartData = {
+    labels: ['Master\'s Degree', 'Doctorate/PhD', 'Not Pursuing'],
+    datasets: [{
+      data: [
+        Math.round((analytics.graduateSchool.masters || 0) * mult),
+        Math.round((analytics.graduateSchool.doctorate || 0) * mult),
+        Math.round((analytics.graduateSchool.notPursuing || 0) * mult)
+      ],
+      backgroundColor: [
+        '#8B5CF6', // Purple for Master's
+        '#EC4899', // Pink for Doctorate
+        '#94A3B8'  // Gray for Not Pursuing
+      ],
+      borderColor: [
+        'rgba(139, 92, 246, 0.1)',
+        'rgba(236, 72, 153, 0.1)',
+        'rgba(148, 163, 184, 0.1)'
       ],
       borderWidth: 0
     }]
@@ -700,24 +760,24 @@ const AdminDashboard = () => {
                   </button>
 
                   {/* Content Management - Dropdown */}
-                  <div className="tool-card content-manager" onClick={(e) => {
-                    const dropdown = e.currentTarget.querySelector('.content-dropdown');
-                    dropdown?.classList.toggle('show');
-                  }}>
+                  <div className="tool-card content-manager" onClick={() => setShowContentDropdown(!showContentDropdown)}>
                     <div className="tool-icon"><FaNewspaper /></div>
                     <div className="tool-text">
                       <div className="tool-title">Content Management</div>
-                      <div className="tool-sub">News, Gallery, Jobs</div>
+                      <div className="tool-sub">News, Gallery, Jobs, Events</div>
                     </div>
-                    <div className="content-dropdown">
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/news'); }}>
+                    <div className={`content-dropdown ${showContentDropdown ? 'show' : ''}`}>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/news'); setShowContentDropdown(false); }}>
                         <FaNewspaper /> News
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/gallery'); }}>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/gallery'); setShowContentDropdown(false); }}>
                         <FaImage /> Gallery
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/jobs'); }}>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/jobs'); setShowContentDropdown(false); }}>
                         <FaBriefcase /> Jobs
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/professional-development'); setShowContentDropdown(false); }}>
+                        <FaCalendarAlt /> Professional Development
                       </button>
                     </div>
                   </div>
@@ -787,7 +847,7 @@ const AdminDashboard = () => {
                   <p className="card-subtitle">View alumni data by category</p>
                 </div>
                 <div className="distribution-toggle">
-                  {['Employment', 'Gender'].map(view => (
+                  {['Employment', 'Gender', 'Graduate School'].map(view => (
                     <button
                       key={view}
                       className={`toggle-btn ${distributionView === view ? 'active' : ''}`}
@@ -801,7 +861,13 @@ const AdminDashboard = () => {
               <div className="powerbi-card-body">
                 <div className="chart-wrapper" style={{ height: 280 }}>
                   <Doughnut
-                    data={distributionView === 'Employment' ? employmentChartData : genderChartData}
+                    data={
+                      distributionView === 'Employment' 
+                        ? employmentChartData 
+                        : distributionView === 'Gender'
+                        ? genderChartData
+                        : graduateSchoolChartData
+                    }
                     options={{
                       ...chartOptions,
                       plugins: {

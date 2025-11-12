@@ -13,7 +13,7 @@ const AdminAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('all');
   const [chartRange, setChartRange] = useState('Year');
-  const [distributionView, setDistributionView] = useState('Employment');
+  const [distributionView, setDistributionView] = useState('Employment'); // 'Employment' | 'Gender' | 'Graduate School'
   const [gradYearsFilter, setGradYearsFilter] = useState('10y');
   const [analytics, setAnalytics] = useState({
     overview: {
@@ -25,8 +25,12 @@ const AdminAnalytics = () => {
     employment: {
       employed: 0,
       unemployed: 0,
-      selfEmployed: 0,
-      graduateSchool: 0
+      selfEmployed: 0
+    },
+    graduateSchool: {
+      masters: 0,
+      doctorate: 0,
+      notPursuing: 0
     },
     demographics: {
       genderDistribution: {},
@@ -82,13 +86,19 @@ const AdminAnalytics = () => {
       const employmentStats = {
         employed: 0,
         unemployed: 0,
-        selfEmployed: 0,
-        graduateSchool: 0
+        selfEmployed: 0
+      };
+
+      const graduateSchoolStats = {
+        masters: 0,
+        doctorate: 0,
+        notPursuing: 0
       };
 
       tracerData?.forEach(response => {
         const status = response.employment_status?.toLowerCase();
-        if (status?.includes('employed') && !status?.includes('unemployed')) {
+        // Employment status (excluding graduate school)
+        if (status?.includes('employed') && !status?.includes('unemployed') && !status?.includes('graduate')) {
           if (status?.includes('self')) {
             employmentStats.selfEmployed++;
           } else {
@@ -96,9 +106,43 @@ const AdminAnalytics = () => {
           }
         } else if (status?.includes('unemployed')) {
           employmentStats.unemployed++;
-        } else if (status?.includes('graduate') || status?.includes('school')) {
-          employmentStats.graduateSchool++;
         }
+
+        // Graduate School tracking - Check BOTH new fields AND old employment_status for backward compatibility
+        let graduateSchoolCounted = false;
+        
+        // First, check the new dedicated fields (if they exist and are set)
+        if (response.pursuing_further_education === true) {
+          const eduType = (response.further_education_type || '').toLowerCase();
+          if (eduType.includes('masters')) {
+            graduateSchoolStats.masters++;
+          } else if (eduType.includes('doctorate') || eduType.includes('phd')) {
+            graduateSchoolStats.doctorate++;
+          } else {
+            // Has pursuing_further_education but no specific type - default to masters
+            graduateSchoolStats.masters++;
+          }
+          graduateSchoolCounted = true;
+        } 
+        // Backward compatibility: Check employment_status for graduate school indicators
+        else if (status?.includes('graduate') || status?.includes('student')) {
+          // Check if it's specifically graduate studies
+          if (status.includes('masters') || status.includes('master')) {
+            graduateSchoolStats.masters++;
+          } else if (status.includes('doctorate') || status.includes('phd') || status.includes('doctoral')) {
+            graduateSchoolStats.doctorate++;
+          } else if (status.includes('graduate')) {
+            // Generic "graduate studies" - default to masters
+            graduateSchoolStats.masters++;
+          }
+          graduateSchoolCounted = true;
+        }
+        
+        // Only count as "Not Pursuing" if we have explicit data saying so
+        if (!graduateSchoolCounted && response.pursuing_further_education === false) {
+          graduateSchoolStats.notPursuing++;
+        }
+        // If pursuing_further_education is null/undefined and no graduate status in employment, don't count
       });
 
       // Process demographics
@@ -165,6 +209,7 @@ const AdminAnalytics = () => {
           jobApplications: 0 // This would need a job_applications table
         },
         employment: employmentStats,
+        graduateSchool: graduateSchoolStats,
         demographics: {
           genderDistribution,
           ageGroups,
@@ -273,25 +318,44 @@ const AdminAnalytics = () => {
   // Chart configurations
   // Match AdminDashboard pie/doughnut styling
   const employmentChartData = {
-    labels: ['Employed', 'Self-Employed', 'Unemployed', 'Graduate School'],
+    labels: ['Employed', 'Self-Employed', 'Unemployed'],
     datasets: [{
       data: [
         analytics.employment.employed,
         analytics.employment.selfEmployed,
-        analytics.employment.unemployed,
-        analytics.employment.graduateSchool
+        analytics.employment.unemployed
       ],
       backgroundColor: [
         '#10B981', // Soft teal-green for Employed
         '#6EE7B7', // Light mint for Self-Employed
-        '#FCA5A5', // Soft coral for Unemployed
-        '#3B82F6'  // Muted blue for Graduate School
+        '#FCA5A5'  // Soft coral for Unemployed
       ],
       borderColor: [
         'rgba(16, 185, 129, 0.1)',
         'rgba(110, 231, 183, 0.1)',
-        'rgba(252, 165, 165, 0.1)',
-        'rgba(59, 130, 246, 0.1)'
+        'rgba(252, 165, 165, 0.1)'
+      ],
+      borderWidth: 0
+    }]
+  };
+
+  const graduateSchoolChartData = {
+    labels: ['Master\'s Degree', 'Doctorate/PhD', 'Not Pursuing'],
+    datasets: [{
+      data: [
+        analytics.graduateSchool.masters,
+        analytics.graduateSchool.doctorate,
+        analytics.graduateSchool.notPursuing
+      ],
+      backgroundColor: [
+        '#8B5CF6', // Purple for Master's
+        '#EC4899', // Pink for Doctorate
+        '#94A3B8'  // Gray for Not Pursuing
+      ],
+      borderColor: [
+        'rgba(139, 92, 246, 0.1)',
+        'rgba(236, 72, 153, 0.1)',
+        'rgba(148, 163, 184, 0.1)'
       ],
       borderWidth: 0
     }]
@@ -457,8 +521,10 @@ const AdminAnalytics = () => {
               <p>Currently Employed</p>
               <h3>{analytics.employment.employed + analytics.employment.selfEmployed}</h3>
               <span className="card-trend positive">
-                {(((analytics.employment.employed + analytics.employment.selfEmployed) /
-                  (analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)}% Rate
+                {analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed > 0 
+                  ? (((analytics.employment.employed + analytics.employment.selfEmployed) /
+                      (analytics.employment.employed + analytics.employment.selfEmployed + analytics.employment.unemployed)) * 100).toFixed(1)
+                  : 0}% Rate
               </span>
             </div>
           </div>
@@ -487,7 +553,7 @@ const AdminAnalytics = () => {
               <p className="card-subtitle">View alumni data by category</p>
             </div>
             <div className="distribution-toggle">
-              {['Employment', 'Gender'].map(view => (
+              {['Employment', 'Gender', 'Graduate School'].map(view => (
                 <button 
                   key={view} 
                   className={`toggle-btn ${distributionView === view ? 'active' : ''}`} 
@@ -501,7 +567,13 @@ const AdminAnalytics = () => {
           <div className="powerbi-card-body">
             <div className="chart-wrapper" style={{ height: 280 }}>
               <Doughnut 
-                data={distributionView === 'Employment' ? employmentChartData : genderChartData} 
+                data={
+                  distributionView === 'Employment' 
+                    ? employmentChartData 
+                    : distributionView === 'Gender'
+                    ? genderChartData
+                    : graduateSchoolChartData
+                } 
                 options={{
                   ...chartOptions,
                   plugins: {
@@ -592,7 +664,7 @@ const AdminAnalytics = () => {
               </div>
               <div className="stat-item">
                 <span className="stat-label">Pursuing Higher Education</span>
-                <span className="stat-value">{analytics.employment.graduateSchool}</span>
+                <span className="stat-value">{analytics.graduateSchool.masters + analytics.graduateSchool.doctorate}</span>
               </div>
             </div>
           </div>

@@ -40,6 +40,7 @@ import AdminInternalNews from './pages/AdminInternalNews';
 import AdminTracerBuilder from './pages/AdminTracerBuilder';
 import AdminGeocode from './pages/AdminGeocode';
 import ProfessionalDevelopmentEvents from './pages/ProfessionalDevelopmentEvents';
+import AdminProfessionalDevelopment from './pages/AdminProfessionalDevelopment';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -187,6 +188,10 @@ function AppRoutes() {
           <Route 
             path="/admin/jobs" 
             element={isAuthenticated && user?.role === 'admin' ? <AdminJobs /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/admin/professional-development" 
+            element={isAuthenticated && user?.role === 'admin' ? <AdminProfessionalDevelopment /> : <Navigate to="/" />} 
           />
           <Route 
             path="/admin/analytics" 

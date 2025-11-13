@@ -140,6 +140,11 @@ const Navbar = () => {
                   <NavLink to="/tracer-study" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
                     Tracer Study
                   </NavLink>
+                  {user?.role === 'alumni' && (
+                    <NavLink to="/professional-development" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={() => setIsOpen(false)}>
+                      Professional Development
+                    </NavLink>
+                  )}
                 </>
               )}
 

@@ -35,9 +35,6 @@ const AdminDashboard = () => {
   const [emailsInput, setEmailsInput] = useState('');
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
-  
-  // Content dropdown state
-  const [showContentDropdown, setShowContentDropdown] = useState(false);
 
   // small UX trends for chips (purely illustrative)
   const [trends, setTrends] = useState({ users: 0, pending: 0, news: 0, jobs: 0, tracer: 0 });
@@ -172,7 +169,7 @@ const AdminDashboard = () => {
 
         // Graduate School tracking - Check BOTH new fields AND old employment_status for backward compatibility
         let graduateSchoolCounted = false;
-        
+
         // First, check the new dedicated fields (if they exist and are set)
         if (r.pursuing_further_education === true) {
           const eduType = (r.further_education_type || '').toLowerCase();
@@ -185,7 +182,7 @@ const AdminDashboard = () => {
             graduateSchool.masters++;
           }
           graduateSchoolCounted = true;
-        } 
+        }
         // Backward compatibility: Check employment_status for graduate school indicators
         else if (status.includes('graduate') || status.includes('student')) {
           // Check if it's specifically graduate studies
@@ -199,7 +196,7 @@ const AdminDashboard = () => {
           }
           graduateSchoolCounted = true;
         }
-        
+
         // Only count as "Not Pursuing" if we have explicit data saying so
         if (!graduateSchoolCounted && r.pursuing_further_education === false) {
           graduateSchool.notPursuing++;
@@ -759,28 +756,41 @@ const AdminDashboard = () => {
                     </div>
                   </button>
 
-                  {/* Content Management - Dropdown */}
-                  <div className="tool-card content-manager" onClick={() => setShowContentDropdown(!showContentDropdown)}>
+                  {/* News Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/news')}>
                     <div className="tool-icon"><FaNewspaper /></div>
                     <div className="tool-text">
-                      <div className="tool-title">Content Management</div>
-                      <div className="tool-sub">News, Gallery, Jobs, Events</div>
+                      <div className="tool-title">News</div>
+                      <div className="tool-sub">Manage news articles</div>
                     </div>
-                    <div className={`content-dropdown ${showContentDropdown ? 'show' : ''}`}>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/news'); setShowContentDropdown(false); }}>
-                        <FaNewspaper /> News
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/gallery'); setShowContentDropdown(false); }}>
-                        <FaImage /> Gallery
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/jobs'); setShowContentDropdown(false); }}>
-                        <FaBriefcase /> Jobs
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/admin/professional-development'); setShowContentDropdown(false); }}>
-                        <FaCalendarAlt /> Professional Development
-                      </button>
+                  </button>
+
+                  {/* Gallery Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/gallery')}>
+                    <div className="tool-icon"><FaImage /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Gallery</div>
+                      <div className="tool-sub">Manage images</div>
                     </div>
-                  </div>
+                  </button>
+
+                  {/* Jobs Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/jobs')}>
+                    <div className="tool-icon"><FaBriefcase /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Jobs</div>
+                      <div className="tool-sub">Manage job postings</div>
+                    </div>
+                  </button>
+
+                  {/* Professional Development Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/professional-development')}>
+                    <div className="tool-icon"><FaCalendarAlt /></div>
+                    <div className="tool-text">
+                      <div className="tool-title">Professional Development</div>
+                      <div className="tool-sub">Manage events</div>
+                    </div>
+                  </button>
 
                   {/* Analytics & Reports */}
                   <button className="tool-card" onClick={() => navigate('/admin/analytics')}>
@@ -862,11 +872,11 @@ const AdminDashboard = () => {
                 <div className="chart-wrapper" style={{ height: 280 }}>
                   <Doughnut
                     data={
-                      distributionView === 'Employment' 
-                        ? employmentChartData 
+                      distributionView === 'Employment'
+                        ? employmentChartData
                         : distributionView === 'Gender'
-                        ? genderChartData
-                        : graduateSchoolChartData
+                          ? genderChartData
+                          : graduateSchoolChartData
                     }
                     options={{
                       ...chartOptions,

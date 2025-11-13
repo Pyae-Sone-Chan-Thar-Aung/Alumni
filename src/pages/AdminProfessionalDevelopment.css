@@ -28,6 +28,51 @@
   margin: 0;
 }
 
+/* Tabs */
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  top: 2px;
+}
+
+.tab-button:hover {
+  color: #1f2937;
+  background: #f9fafb;
+}
+
+.tab-button.active {
+  color: #c21e56;
+  border-bottom-color: #c21e56;
+  font-weight: 600;
+}
+
+.tab-button svg {
+  font-size: 1.1rem;
+}
+
+.admin-section {
+  margin-top: 2rem;
+}
+
 /* Filters */
 .admin-filters {
   display: flex;
@@ -190,6 +235,36 @@
   color: #991b1b;
 }
 
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-registered {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-attended {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -221,6 +296,15 @@
 
 .btn-icon.btn-danger:hover {
   background: #fecaca;
+}
+
+.btn-icon.btn-success {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.btn-icon.btn-success:hover {
+  background: #a7f3d0;
 }
 
 /* Buttons */

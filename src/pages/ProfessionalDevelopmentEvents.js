@@ -44,6 +44,8 @@ const ProfessionalDevelopmentEvents = () => {
   const [mySpeakerRoles, setMySpeakerRoles] = useState([]);
   const [participants, setParticipants] = useState({});
   const [speakers, setSpeakers] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const EVENTS_PER_PAGE = 6;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -192,6 +194,26 @@ const ProfessionalDevelopmentEvents = () => {
 
       if (error) throw error;
 
+      // Notify all admins about the registration
+      const { data: admins } = await supabase
+        .from('users')
+        .select('id')
+        .in('role', ['admin', 'super_admin'])
+        .eq('approval_status', 'approved');
+
+      if (admins && admins.length > 0) {
+        const event = events.find(e => e.id === eventId);
+        const notifications = admins.map(admin => ({
+          event_id: eventId,
+          user_id: admin.id,
+          notification_type: 'registration_confirmed',
+          title: 'New Event Registration',
+          message: `${user.first_name} ${user.last_name} registered for "${event?.title || 'an event'}"`
+        }));
+
+        await supabase.from('event_notifications').insert(notifications);
+      }
+
       toast.success('Successfully registered for the event!');
       fetchMyData();
       fetchEvents();
@@ -307,6 +329,18 @@ const ProfessionalDevelopmentEvents = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
+  const paginatedEvents = filteredEvents.slice(
+    (currentPage - 1) * EVENTS_PER_PAGE,
+    currentPage * EVENTS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus]);
+
   const isRegistered = (eventId) => {
     return myRegistrations.some(r => r.event_id === eventId);
   };
@@ -387,7 +421,7 @@ const ProfessionalDevelopmentEvents = () => {
               <p>Check back later for upcoming professional development events</p>
             </div>
           ) : (
-            filteredEvents.map(event => (
+            paginatedEvents.map(event => (
               <EventCard
                 key={event.id}
                 event={event}
@@ -411,6 +445,29 @@ const ProfessionalDevelopmentEvents = () => {
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button
+              className="pagination-btn"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+            <div className="pagination-info">
+              Page {currentPage} of {totalPages}
+            </div>
+            <button
+              className="pagination-btn"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Create Event Modal */}
@@ -962,6 +1019,26 @@ const SpeakerApplicationModal = ({ event, existingApplication, onClose, onSucces
           });
 
         if (error) throw error;
+
+        // Notify all admins about the speaker application
+        const { data: admins } = await supabase
+          .from('users')
+          .select('id')
+          .in('role', ['admin', 'super_admin'])
+          .eq('approval_status', 'approved');
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(admin => ({
+            event_id: event.id,
+            user_id: admin.id,
+            notification_type: 'speaker_application_reviewed',
+            title: 'New Speaker Application',
+            message: `${user.first_name} ${user.last_name} applied as ${formData.desired_role.replace('_', ' ')} for "${event.title}"`
+          }));
+
+          await supabase.from('event_notifications').insert(notifications);
+        }
+
         toast.success('Application submitted successfully!');
       }
 

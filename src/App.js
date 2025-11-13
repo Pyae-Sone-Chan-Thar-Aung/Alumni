@@ -29,6 +29,7 @@ import Batchmates from './pages/Batchmates';
 import Messages from './pages/Messages';
 import AdminUsers from './pages/AdminUsers';
 import AdminNews from './pages/AdminNews';
+import AdminNewsGallery from './pages/AdminNewsGallery';
 import AdminPendingRegistrations from './pages/AdminPendingRegistrations';
 import TracerStudy from './pages/TracerStudy';
 import AdminTracerStudy from './pages/AdminTracerStudy';
@@ -168,6 +169,10 @@ function AppRoutes() {
           <Route 
             path="/admin/news" 
             element={isAuthenticated && (user?.role === 'admin' || user?.role === 'coordinator') ? <AdminInternalNews /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/admin/news-gallery" 
+            element={isAuthenticated && user?.role === 'admin' ? <AdminNewsGallery /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/admin/pending-registrations" 

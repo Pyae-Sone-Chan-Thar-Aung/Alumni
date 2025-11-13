@@ -26,8 +26,58 @@ const NewsGallery = () => {
     const load = async () => {
       setLoading(true);
 
-      // Determine auth status; only fetch internal news for authenticated users
+      // 1) Fetch published news from 'news' table (publicly accessible)
       let newsItems = [];
+      try {
+        const { data: publicNews } = await supabase
+          .from('news')
+          .select('*')
+          .eq('is_published', true)
+          .order('published_at', { ascending: false });
+
+        newsItems = (publicNews || []).map((n) => ({
+          id: `news_${n.id}`,
+          type: 'news',
+          title: n.title,
+          content: n.content,
+          date: n.published_at || n.created_at,
+          image: n.image_url || null,
+          category: n.category || 'News',
+          sourceUrl: null
+        }));
+      } catch (err) {
+        console.error('Error fetching news:', err);
+      }
+
+      // 2) Fetch published gallery albums (publicly accessible)
+      let galleryItems = [];
+      try {
+        const { data: albums } = await supabase
+          .from('gallery_albums')
+          .select(`
+            *,
+            gallery_images (id, image_url, caption)
+          `)
+          .eq('is_published', true)
+          .order('created_at', { ascending: false });
+
+        galleryItems = (albums || []).map((album) => ({
+          id: `album_${album.id}`,
+          type: 'gallery',
+          title: album.title,
+          content: album.description || '',
+          date: album.event_date || album.created_at,
+          image: album.cover_image_url || (album.gallery_images && album.gallery_images[0]?.image_url) || null,
+          galleryImages: (album.gallery_images || []).map(img => img.image_url),
+          category: 'Gallery',
+          sourceUrl: null
+        }));
+      } catch (err) {
+        console.error('Error fetching gallery:', err);
+      }
+
+      // 3) Fetch internal news for authenticated users only
+      let internalNewsItems = [];
       try {
         const { data: userData } = await supabase.auth.getUser();
         if (userData && userData.user) {
@@ -37,7 +87,7 @@ const NewsGallery = () => {
             .eq('is_published', true)
             .order('published_at', { ascending: false });
 
-          newsItems = (internalNews || []).map((n) => ({
+          internalNewsItems = (internalNews || []).map((n) => ({
             id: `internal_${n.id}`,
             type: 'news',
             title: n.title,
@@ -50,7 +100,7 @@ const NewsGallery = () => {
         }
       } catch {}
 
-      // 2) Load Facebook posts only if credentials are configured
+      // 4) Load Facebook posts only if credentials are configured
       let fbItems = [];
       if (hasFbCreds) {
         const fb = await fetchFacebookFeed({ limit: 15 });
@@ -71,7 +121,7 @@ const NewsGallery = () => {
         }
       }
 
-      const unified = [...(fbItems || []), ...(newsItems || [])]
+      const unified = [...(fbItems || []), ...(newsItems || []), ...(galleryItems || []), ...(internalNewsItems || [])]
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setItems(unified);

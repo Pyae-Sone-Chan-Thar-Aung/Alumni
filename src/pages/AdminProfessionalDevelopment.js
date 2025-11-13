@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { sendEventInvitationEmail, sendSpeakerInvitationEmail } from '../utils/emailService';
 import { 
   FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaEye, FaSearch, FaFilter, 
   FaMapMarkerAlt, FaUsers, FaMicrophone, FaCheckCircle, FaTimes, 
@@ -97,7 +98,7 @@ const AdminProfessionalDevelopment = () => {
     try {
       const { data, error } = await supabase
         .from('event_participants')
-        .select('*, professional_development_events(id, title, start_date), users(id, first_name, last_name, email)')
+        .select('*, professional_development_events(id, title, start_date), users:users!user_id(id, first_name, last_name, email)')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -117,7 +118,7 @@ const AdminProfessionalDevelopment = () => {
     try {
       const { data, error } = await supabase
         .from('speaker_applications')
-        .select('*, professional_development_events(id, title, start_date), users(id, first_name, last_name, email)')
+        .select('*, professional_development_events(id, title, start_date), users:users!user_id(id, first_name, last_name, email)')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -299,6 +300,19 @@ const AdminProfessionalDevelopment = () => {
 
   const handleInviteAlumni = async (eventId, userId) => {
     try {
+      // Check if already registered
+      const { data: existing } = await supabase
+        .from('event_participants')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (existing) {
+        toast.info('Alumni is already registered for this event');
+        return;
+      }
+
       const { error } = await supabase
         .from('event_participants')
         .insert({
@@ -311,6 +325,43 @@ const AdminProfessionalDevelopment = () => {
         });
 
       if (error) throw error;
+
+      // Fetch the invited user's details and event details
+      const { data: invitedUser } = await supabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+
+      const { data: event } = await supabase
+        .from('professional_development_events')
+        .select('title, start_date, location, venue')
+        .eq('id', eventId)
+        .single();
+
+      // Create notification
+      await supabase
+        .from('event_notifications')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          notification_type: 'invitation_sent',
+          title: 'Event Invitation',
+          message: `You have been invited to join "${event?.title || 'an event'}"`
+        });
+
+      // Send email notification
+      if (invitedUser?.email && event) {
+        await sendEventInvitationEmail(
+          invitedUser.email,
+          invitedUser.first_name,
+          invitedUser.last_name,
+          event.title,
+          event.start_date,
+          event.location || event.venue
+        );
+      }
+
       toast.success('Alumni invited successfully!');
       fetchParticipants();
     } catch (error) {
@@ -321,6 +372,20 @@ const AdminProfessionalDevelopment = () => {
 
   const handleInviteSpeaker = async (eventId, userId, role) => {
     try {
+      // Check if already invited with this role
+      const { data: existing } = await supabase
+        .from('event_speakers')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .eq('role', role)
+        .maybeSingle();
+
+      if (existing) {
+        toast.info(`Alumni is already invited as ${role.replace('_', ' ')} for this event`);
+        return;
+      }
+
       const { error } = await supabase
         .from('event_speakers')
         .insert({
@@ -333,6 +398,48 @@ const AdminProfessionalDevelopment = () => {
         });
 
       if (error) throw error;
+
+      // Fetch the invited user's details and event details
+      const { data: invitedUser } = await supabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+
+      const { data: event } = await supabase
+        .from('professional_development_events')
+        .select('title, start_date, location, venue')
+        .eq('id', eventId)
+        .single();
+
+      // Create notification
+      const roleDisplay = role === 'keynote_speaker' ? 'keynote speaker' : 
+                         role === 'panelist' ? 'panelist' :
+                         role === 'moderator' ? 'moderator' : 'speaker';
+
+      await supabase
+        .from('event_notifications')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          notification_type: 'speaker_invitation',
+          title: 'Speaker Invitation',
+          message: `You have been invited to be a ${roleDisplay} for "${event?.title || 'an event'}"`
+        });
+
+      // Send email notification
+      if (invitedUser?.email && event) {
+        await sendSpeakerInvitationEmail(
+          invitedUser.email,
+          invitedUser.first_name,
+          invitedUser.last_name,
+          event.title,
+          event.start_date,
+          event.location || event.venue,
+          role
+        );
+      }
+
       toast.success('Speaker invitation sent successfully!');
     } catch (error) {
       console.error('Error inviting speaker:', error);

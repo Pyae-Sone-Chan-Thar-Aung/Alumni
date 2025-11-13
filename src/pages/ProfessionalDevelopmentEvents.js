@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { supabase } from '../config/supabaseClient';
+import { sendEventInvitationEmail, sendSpeakerInvitationEmail } from '../utils/emailService';
 import {
   FaCalendarAlt,
   FaMapMarkerAlt,
@@ -232,12 +233,12 @@ const ProfessionalDevelopmentEvents = () => {
   const handleInviteAlumni = async (eventId, userId) => {
     try {
       // Check if already registered
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('event_participants')
         .select('id')
         .eq('event_id', eventId)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         toast.info('Alumni is already registered for this event');
@@ -259,6 +260,13 @@ const ProfessionalDevelopmentEvents = () => {
 
       if (error) throw error;
 
+      // Fetch the invited user's details for email
+      const { data: invitedUser } = await supabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+
       // Create notification
       await supabase
         .from('event_notifications')
@@ -269,6 +277,18 @@ const ProfessionalDevelopmentEvents = () => {
           title: 'Event Invitation',
           message: `You have been invited to join "${selectedEvent?.title || 'an event'}"`
         });
+
+      // Send email notification
+      if (invitedUser?.email) {
+        await sendEventInvitationEmail(
+          invitedUser.email,
+          invitedUser.first_name,
+          invitedUser.last_name,
+          selectedEvent?.title,
+          selectedEvent?.start_date,
+          selectedEvent?.location || selectedEvent?.venue
+        );
+      }
 
       toast.success('Alumni invited successfully!');
       fetchEvents();
@@ -281,6 +301,20 @@ const ProfessionalDevelopmentEvents = () => {
 
   const handleInviteSpeaker = async (eventId, userId, role) => {
     try {
+      // Check if already invited with this role
+      const { data: existing } = await supabase
+        .from('event_speakers')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .eq('role', role)
+        .maybeSingle();
+
+      if (existing) {
+        toast.info(`Alumni is already invited as ${role.replace('_', ' ')} for this event`);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('event_speakers')
         .insert({
@@ -296,7 +330,18 @@ const ProfessionalDevelopmentEvents = () => {
 
       if (error) throw error;
 
+      // Fetch the invited user's details for email
+      const { data: invitedUser } = await supabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+
       // Create notification
+      const roleDisplay = role === 'keynote_speaker' ? 'keynote speaker' : 
+                         role === 'panelist' ? 'panelist' :
+                         role === 'moderator' ? 'moderator' : 'speaker';
+      
       await supabase
         .from('event_notifications')
         .insert({
@@ -304,8 +349,21 @@ const ProfessionalDevelopmentEvents = () => {
           user_id: userId,
           notification_type: 'speaker_invitation',
           title: 'Speaker Invitation',
-          message: `You have been invited to be a ${role === 'keynote_speaker' ? 'keynote speaker' : 'speaker'} for "${selectedEvent?.title || 'an event'}"`
+          message: `You have been invited to be a ${roleDisplay} for "${selectedEvent?.title || 'an event'}"`
         });
+
+      // Send email notification
+      if (invitedUser?.email) {
+        await sendSpeakerInvitationEmail(
+          invitedUser.email,
+          invitedUser.first_name,
+          invitedUser.last_name,
+          selectedEvent?.title,
+          selectedEvent?.start_date,
+          selectedEvent?.location || selectedEvent?.venue,
+          role
+        );
+      }
 
       toast.success('Speaker invitation sent successfully!');
       fetchEvents();
@@ -359,7 +417,7 @@ const ProfessionalDevelopmentEvents = () => {
     return (
       <div className="events-page">
         <div className="container">
-          <div className="loading-container" style={{ textAlign: 'center', padding: '50px' }}>
+          <div style={{ textAlign: 'center', padding: '50px' }}>
             <div className="loading-spinner"></div>
             <p>Loading events...</p>
           </div>

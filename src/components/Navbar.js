@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaBars, FaTimes, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -69,6 +70,7 @@ const Navbar = () => {
               </>
             ) : (
               <div className="nav-user">
+                <NotificationBell />
                 {user?.role === 'alumni' ? (
                   <Link to="/alumni-profile" className="nav-link" onClick={() => setIsOpen(false)}>
                     <span className="user-name">

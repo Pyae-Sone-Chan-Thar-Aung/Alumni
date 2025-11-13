@@ -232,3 +232,239 @@ export async function createNotification(userId, type, title, message) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Send an event invitation email to an alumni
+ * @param {string} email - Alumni's email address
+ * @param {string} firstName - Alumni's first name
+ * @param {string} lastName - Alumni's last name
+ * @param {string} eventTitle - Event title
+ * @param {string} eventDate - Event start date
+ * @param {string} eventLocation - Event location
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function sendEventInvitationEmail(email, firstName, lastName, eventTitle, eventDate, eventLocation) {
+  try {
+    const fullName = `${firstName} ${lastName}`.trim();
+    const formattedDate = new Date(eventDate).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    
+    const subject = `🎉 You're Invited: ${eventTitle}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .event-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+            .event-details h3 { margin-top: 0; color: #667eea; }
+            .detail-item { margin: 10px 0; display: flex; align-items: start; }
+            .detail-label { font-weight: bold; min-width: 80px; color: #666; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 You're Invited!</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${fullName},</p>
+              
+              <p>We're excited to invite you to join us for an upcoming professional development event!</p>
+              
+              <div class="event-details">
+                <h3>📅 Event Details</h3>
+                <div class="detail-item">
+                  <span class="detail-label">Event:</span>
+                  <span><strong>${eventTitle}</strong></span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Date:</span>
+                  <span>${formattedDate}</span>
+                </div>
+                ${eventLocation ? `
+                <div class="detail-item">
+                  <span class="detail-label">Location:</span>
+                  <span>${eventLocation}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <p>This event has been specially curated for our CCS alumni community. We hope you can join us!</p>
+              
+              <center>
+                <a href="https://ccsalumni.uic.edu.ph/professional-development" class="button" style="color: white; text-decoration: none;">
+                  View Event Details
+                </a>
+              </center>
+              
+              <p>You can view more details about the event and manage your registration by logging into your alumni portal.</p>
+              
+              <p>We look forward to seeing you there!</p>
+              
+              <p>Best regards,<br>
+              <strong>UIC CCS Alumni Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} UIC College of Computer Studies</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Call Supabase Edge Function to send email
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to: email, subject, html }
+    });
+
+    if (error) {
+      console.error('Error sending event invitation email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error sending event invitation email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send a speaker invitation email to an alumni
+ * @param {string} email - Alumni's email address
+ * @param {string} firstName - Alumni's first name
+ * @param {string} lastName - Alumni's last name
+ * @param {string} eventTitle - Event title
+ * @param {string} eventDate - Event start date
+ * @param {string} eventLocation - Event location
+ * @param {string} role - Speaker role (speaker, keynote_speaker, panelist, moderator)
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function sendSpeakerInvitationEmail(email, firstName, lastName, eventTitle, eventDate, eventLocation, role) {
+  try {
+    const fullName = `${firstName} ${lastName}`.trim();
+    const formattedDate = new Date(eventDate).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    
+    const roleDisplay = role === 'keynote_speaker' ? 'Keynote Speaker' : 
+                       role === 'panelist' ? 'Panelist' :
+                       role === 'moderator' ? 'Moderator' : 'Speaker';
+    
+    const subject = `🎬 Speaker Invitation: ${eventTitle}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .event-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+            .event-details h3 { margin-top: 0; color: #f59e0b; }
+            .detail-item { margin: 10px 0; display: flex; align-items: start; }
+            .detail-label { font-weight: bold; min-width: 80px; color: #666; }
+            .highlight-box { background: #fef3c7; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎬 Speaker Invitation</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${fullName},</p>
+              
+              <p>We are honored to invite you to be a <strong>${roleDisplay}</strong> at our upcoming professional development event!</p>
+              
+              <div class="highlight-box">
+                <p style="margin: 0; font-size: 1.1em; text-align: center;">
+                  <strong>🎖️ You've been invited as ${roleDisplay}</strong>
+                </p>
+              </div>
+              
+              <div class="event-details">
+                <h3>📅 Event Details</h3>
+                <div class="detail-item">
+                  <span class="detail-label">Event:</span>
+                  <span><strong>${eventTitle}</strong></span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Role:</span>
+                  <span><strong>${roleDisplay}</strong></span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Date:</span>
+                  <span>${formattedDate}</span>
+                </div>
+                ${eventLocation ? `
+                <div class="detail-item">
+                  <span class="detail-label">Location:</span>
+                  <span>${eventLocation}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <p>Your expertise and experience would be invaluable to our CCS alumni community. We believe your insights will greatly benefit the attendees.</p>
+              
+              <center>
+                <a href="https://ccsalumni.uic.edu.ph/professional-development" class="button" style="color: white; text-decoration: none;">
+                  View Event & Respond
+                </a>
+              </center>
+              
+              <p>Please log into your alumni portal to accept or decline this invitation and view more details about the event.</p>
+              
+              <p>We look forward to your positive response!</p>
+              
+              <p>Best regards,<br>
+              <strong>UIC CCS Alumni Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} UIC College of Computer Studies</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Call Supabase Edge Function to send email
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to: email, subject, html }
+    });
+
+    if (error) {
+      console.error('Error sending speaker invitation email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error sending speaker invitation email:', error);
+    return { success: false, error: error.message };
+  }
+}

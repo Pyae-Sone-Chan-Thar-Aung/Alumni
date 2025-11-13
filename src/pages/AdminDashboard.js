@@ -756,21 +756,12 @@ const AdminDashboard = () => {
                     </div>
                   </button>
 
-                  {/* News Management */}
-                  <button className="tool-card" onClick={() => navigate('/admin/news')}>
+                  {/* News & Gallery Management */}
+                  <button className="tool-card" onClick={() => navigate('/admin/news-gallery')}>
                     <div className="tool-icon"><FaNewspaper /></div>
                     <div className="tool-text">
-                      <div className="tool-title">News</div>
-                      <div className="tool-sub">Manage news articles</div>
-                    </div>
-                  </button>
-
-                  {/* Gallery Management */}
-                  <button className="tool-card" onClick={() => navigate('/admin/gallery')}>
-                    <div className="tool-icon"><FaImage /></div>
-                    <div className="tool-text">
-                      <div className="tool-title">Gallery</div>
-                      <div className="tool-sub">Manage images</div>
+                      <div className="tool-title">News & Gallery</div>
+                      <div className="tool-sub">Manage news & images</div>
                     </div>
                   </button>
 

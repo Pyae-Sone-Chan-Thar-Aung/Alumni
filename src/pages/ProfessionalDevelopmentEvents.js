@@ -417,9 +417,15 @@ const ProfessionalDevelopmentEvents = () => {
     return (
       <div className="events-page">
         <div className="container">
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <div className="loading-spinner"></div>
-            <p>Loading events...</p>
+          <div className="events-header">
+            <div>
+              <h1>Professional Development Events</h1>
+              <p>Join alumni events, apply as speakers, and grow professionally together</p>
+            </div>
+          </div>
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading professional development events...</p>
           </div>
         </div>
       </div>

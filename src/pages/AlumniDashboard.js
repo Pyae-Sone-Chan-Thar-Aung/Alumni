@@ -60,9 +60,9 @@ const AlumniDashboard = () => {
         .from('job_opportunities')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch recent internal news (last 3 published articles for alumni)
+      // Fetch recent news (last 3 published articles for alumni)
       const { data: newsData, error: newsError } = await supabase
-        .from('internal_news')
+        .from('news')
         .select('id, title, published_at, category')
         .eq('is_published', true)
         .order('published_at', { ascending: false })

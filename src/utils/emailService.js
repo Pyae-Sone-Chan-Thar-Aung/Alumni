@@ -468,3 +468,237 @@ export async function sendSpeakerInvitationEmail(email, firstName, lastName, eve
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Send speaker application approval email
+ * @param {string} email - Applicant's email address
+ * @param {string} firstName - Applicant's first name
+ * @param {string} lastName - Applicant's last name
+ * @param {string} eventTitle - Event title
+ * @param {string} eventDate - Event start date
+ * @param {string} eventLocation - Event location
+ * @param {string} role - Speaker role (speaker, keynote_speaker, panelist, moderator)
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function sendSpeakerApplicationApprovalEmail(email, firstName, lastName, eventTitle, eventDate, eventLocation, role) {
+  try {
+    const fullName = `${firstName} ${lastName}`.trim();
+    const formattedDate = new Date(eventDate).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    
+    const roleDisplay = role === 'keynote_speaker' ? 'Keynote Speaker' : 
+                       role === 'panelist' ? 'Panelist' :
+                       role === 'moderator' ? 'Moderator' : 'Speaker';
+    
+    const subject = `✅ Your Speaker Application Has Been Approved - ${eventTitle}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .event-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+            .event-details h3 { margin-top: 0; color: #10b981; }
+            .detail-item { margin: 10px 0; display: flex; align-items: start; }
+            .detail-label { font-weight: bold; min-width: 80px; color: #666; }
+            .success-box { background: #d1fae5; border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
+            .button { display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Congratulations!</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${fullName},</p>
+              
+              <div class="success-box">
+                <p style="margin: 0; font-size: 1.2em;">
+                  <strong>✅ Your speaker application has been APPROVED!</strong>
+                </p>
+              </div>
+              
+              <p>We're thrilled to inform you that your application to be a <strong>${roleDisplay}</strong> has been approved!</p>
+              
+              <div class="event-details">
+                <h3>📅 Event Details</h3>
+                <div class="detail-item">
+                  <span class="detail-label">Event:</span>
+                  <span><strong>${eventTitle}</strong></span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Your Role:</span>
+                  <span><strong>${roleDisplay}</strong></span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Date:</span>
+                  <span>${formattedDate}</span>
+                </div>
+                ${eventLocation ? `
+                <div class="detail-item">
+                  <span class="detail-label">Location:</span>
+                  <span>${eventLocation}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <p><strong>Next Steps:</strong></p>
+              <ul>
+                <li>Log into your alumni portal to view complete event details</li>
+                <li>Prepare your presentation or session materials</li>
+                <li>We'll be in touch with additional details and requirements</li>
+              </ul>
+              
+              <center>
+                <a href="https://ccsalumni.uic.edu.ph/professional-development" class="button" style="color: white; text-decoration: none;">
+                  View Event Details
+                </a>
+              </center>
+              
+              <p>Thank you for contributing your expertise to our CCS alumni community. We're looking forward to your participation!</p>
+              
+              <p>Best regards,<br>
+              <strong>UIC CCS Alumni Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} UIC College of Computer Studies</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Call Supabase Edge Function to send email
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to: email, subject, html }
+    });
+
+    if (error) {
+      console.error('Error sending speaker application approval email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error sending speaker application approval email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send speaker application rejection email
+ * @param {string} email - Applicant's email address
+ * @param {string} firstName - Applicant's first name
+ * @param {string} lastName - Applicant's last name
+ * @param {string} eventTitle - Event title
+ * @param {string} role - Speaker role (speaker, keynote_speaker, panelist, moderator)
+ * @param {string} reviewNotes - Optional feedback/reason for rejection
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function sendSpeakerApplicationRejectionEmail(email, firstName, lastName, eventTitle, role, reviewNotes = '') {
+  try {
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    const roleDisplay = role === 'keynote_speaker' ? 'Keynote Speaker' : 
+                       role === 'panelist' ? 'Panelist' :
+                       role === 'moderator' ? 'Moderator' : 'Speaker';
+    
+    const subject = `Update on Your Speaker Application - ${eventTitle}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .event-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+            .event-details h3 { margin-top: 0; color: #667eea; }
+            .detail-item { margin: 10px 0; display: flex; align-items: start; }
+            .detail-label { font-weight: bold; min-width: 80px; color: #666; }
+            .info-box { background: #fef2f2; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Speaker Application Update</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${fullName},</p>
+              
+              <p>Thank you for your interest in being a <strong>${roleDisplay}</strong> for "<strong>${eventTitle}</strong>".</p>
+              
+              <div class="info-box">
+                <p style="margin: 0;">After careful consideration, we regret to inform you that we are unable to accept your speaker application at this time.</p>
+              </div>
+              
+              ${reviewNotes ? `
+              <div class="event-details">
+                <h3>Feedback</h3>
+                <p>${reviewNotes}</p>
+              </div>
+              ` : ''}
+              
+              <p>This decision was not easy to make, as we received many excellent applications. Please note that this does not reflect on your qualifications or expertise.</p>
+              
+              <p><strong>We encourage you to:</strong></p>
+              <ul>
+                <li>Apply for future speaking opportunities</li>
+                <li>Participate as an attendee in this and other events</li>
+                <li>Stay connected with the CCS alumni community</li>
+              </ul>
+              
+              <center>
+                <a href="https://ccsalumni.uic.edu.ph/professional-development" class="button" style="color: white; text-decoration: none;">
+                  View Other Events
+                </a>
+              </center>
+              
+              <p>We value your continued engagement with the CCS alumni community and hope to see you at our events.</p>
+              
+              <p>Best regards,<br>
+              <strong>UIC CCS Alumni Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} UIC College of Computer Studies</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Call Supabase Edge Function to send email
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to: email, subject, html }
+    });
+
+    if (error) {
+      console.error('Error sending speaker application rejection email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error sending speaker application rejection email:', error);
+    return { success: false, error: error.message };
+  }
+}

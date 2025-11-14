@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { sendEventInvitationEmail, sendSpeakerInvitationEmail } from '../utils/emailService';
+import { sendEventInvitationEmail, sendSpeakerInvitationEmail, sendSpeakerApplicationApprovalEmail, sendSpeakerApplicationRejectionEmail } from '../utils/emailService';
 import { 
   FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaEye, FaSearch, FaFilter, 
   FaMapMarkerAlt, FaUsers, FaMicrophone, FaCheckCircle, FaTimes, 
@@ -449,6 +449,14 @@ const AdminProfessionalDevelopment = () => {
 
   const handleApplicationAction = async (applicationId, action, reviewNotes = '') => {
     try {
+      // First, get the application details
+      const application = applications.find(app => app.id === applicationId);
+      if (!application) {
+        toast.error('Application not found');
+        return;
+      }
+
+      // Update the application status
       const { error } = await supabase
         .from('speaker_applications')
         .update({ 
@@ -460,6 +468,57 @@ const AdminProfessionalDevelopment = () => {
         .eq('id', applicationId);
 
       if (error) throw error;
+
+      // Get the event details
+      const { data: event } = await supabase
+        .from('professional_development_events')
+        .select('title, start_date, location, venue')
+        .eq('id', application.event_id)
+        .single();
+
+      // Create notification for the applicant
+      const roleDisplay = application.desired_role === 'keynote_speaker' ? 'keynote speaker' : 
+                         application.desired_role === 'panelist' ? 'panelist' :
+                         application.desired_role === 'moderator' ? 'moderator' : 'speaker';
+      
+      const notificationMessage = action === 'approved'
+        ? `Congratulations! Your application to be a ${roleDisplay} for "${event?.title || 'the event'}" has been approved.`
+        : `Your application to be a ${roleDisplay} for "${event?.title || 'the event'}" was not accepted at this time.${reviewNotes ? ' ' + reviewNotes : ''}`;
+
+      await supabase
+        .from('event_notifications')
+        .insert({
+          event_id: application.event_id,
+          user_id: application.user_id,
+          notification_type: 'speaker_application_reviewed',
+          title: action === 'approved' ? 'Speaker Application Approved' : 'Speaker Application Update',
+          message: notificationMessage
+        });
+
+      // Send email notification
+      if (application.users?.email && event) {
+        if (action === 'approved') {
+          await sendSpeakerApplicationApprovalEmail(
+            application.users.email,
+            application.users.first_name,
+            application.users.last_name,
+            event.title,
+            event.start_date,
+            event.location || event.venue,
+            application.desired_role
+          );
+        } else {
+          await sendSpeakerApplicationRejectionEmail(
+            application.users.email,
+            application.users.first_name,
+            application.users.last_name,
+            event.title,
+            application.desired_role,
+            reviewNotes
+          );
+        }
+      }
+
       toast.success(`Application ${action === 'approved' ? 'approved' : 'rejected'} successfully!`);
       fetchApplications();
     } catch (error) {
